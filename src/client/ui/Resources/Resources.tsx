@@ -1,37 +1,96 @@
 import type { PlayerState } from "../../../state/PlayerState";
+import { RESOURCE_ICONS, type ResourceIconKey } from "../VisualSystem/ResourceIcons";
 
 interface ResourcesProps {
-  players: PlayerState[];
+  player: PlayerState | null;
 }
 
-export function Resources({ players }: ResourcesProps) {
+const RESOURCE_GROUPS: Array<{
+  label: string;
+  items: Array<{ key: ResourceIconKey; label: string; source: "resources" | "animals" }>;
+}> = [
+  {
+    label: "建筑资源",
+    items: [
+      { key: "wood", label: "木材", source: "resources" },
+      { key: "clay", label: "黏土", source: "resources" },
+      { key: "reed", label: "芦苇", source: "resources" },
+      { key: "stone", label: "石头", source: "resources" },
+    ],
+  },
+  {
+    label: "食物与作物",
+    items: [
+      { key: "food", label: "食物", source: "resources" },
+      { key: "grain", label: "谷物", source: "resources" },
+      { key: "vegetable", label: "蔬菜", source: "resources" },
+    ],
+  },
+  {
+    label: "动物",
+    items: [
+      { key: "sheep", label: "羊", source: "animals" },
+      { key: "boar", label: "野猪", source: "animals" },
+      { key: "cattle", label: "牛", source: "animals" },
+    ],
+  },
+];
+
+export function Resources({ player }: ResourcesProps) {
   return (
-    <section className="panel">
-      <h2>[人] 玩家</h2>
-      {players.length === 0 ? (
-        <p className="muted">暂无玩家。</p>
+    <section className="resource-panel">
+      <header className="resource-panel__header">
+        <h2>资源</h2>
+        {player ? <span>乞讨卡 {player.beggingCards}</span> : null}
+      </header>
+
+      {!player ? (
+        <p className="muted">暂无玩家资源。</p>
       ) : (
-        <ul className="player-list">
-          {players.map((player) => (
-            <li key={player.id} className="player-card">
-              <h3>{player.name}</h3>
-              <p>工人：{player.workers.length}</p>
-              <p>食物：{player.resources.food}</p>
-              <p>
-                木材 {player.resources.wood} / 黏土 {player.resources.clay} / 芦苇 {player.resources.reed} / 石头 {player.resources.stone}
-              </p>
-              <p>
-                谷物 {player.resources.grain} / 蔬菜 {player.resources.vegetable}
-              </p>
-              <p>
-                羊 {player.animals.sheep} / 野猪 {player.animals.boar} / 牛 {player.animals.cattle}
-              </p>
-              <p>乞讨卡：{player.beggingCards}</p>
-              {player.score ? <p>总分：{player.score.total}</p> : null}
-            </li>
-          ))}
-        </ul>
+        <div className="resource-panel__players">
+          <article className="resource-player">
+            {RESOURCE_GROUPS.map((group) => (
+              <section key={group.label} className="resource-group">
+                <span>{group.label}</span>
+                <div>
+                  {group.items.map((item) => (
+                    <ResourceToken
+                      key={item.key}
+                      count={getCount(player, item.key, item.source)}
+                      label={item.label}
+                      ownerId={player.id}
+                      type={item.key}
+                    />
+                  ))}
+                </div>
+              </section>
+            ))}
+          </article>
+        </div>
       )}
     </section>
   );
+}
+
+function ResourceToken({ count, label, ownerId, type }: { count: number; label: string; ownerId: string; type: ResourceIconKey }) {
+  const Icon = RESOURCE_ICONS[type];
+  return (
+    <span className={`resource-token ${count === 0 ? "resource-token--empty" : ""}`} data-resource={type} data-resource-owner={ownerId} title={label}>
+      <Icon size={24} />
+      <strong>{count}</strong>
+    </span>
+  );
+}
+
+function getCount(player: PlayerState, key: ResourceIconKey, source: "resources" | "animals"): number {
+  if (source === "animals") {
+    if (key === "sheep" || key === "boar" || key === "cattle") return player.animals[key];
+    return 0;
+  }
+
+  if (key === "wood" || key === "clay" || key === "reed" || key === "stone" || key === "grain" || key === "vegetable" || key === "food") {
+    return player.resources[key];
+  }
+
+  return 0;
 }

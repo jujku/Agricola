@@ -17,6 +17,7 @@ interface GameStore {
   setRoomList: (rooms: RoomListItem[]) => void;
   syncState: (snapshot: RoomSnapshot) => void;
   leaveRoomLocal: (message?: string) => void;
+  logoutLocal: () => void;
   setNotice: (notice: string | null) => void;
 }
 
@@ -44,6 +45,15 @@ export const useGameStore = create<GameStore>((set) => ({
       roomId: null,
       game: null,
       notice: message ?? null,
+    }),
+  logoutLocal: () =>
+    set({
+      username: null,
+      token: null,
+      roomId: null,
+      game: null,
+      rooms: [],
+      notice: null,
     }),
   setNotice: (notice) => set({ notice }),
 }));

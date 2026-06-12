@@ -57,11 +57,93 @@ describe("GameEngine", () => {
         resources: { ...player.resources, food: 10 },
       })),
     };
-    const scored = engine.advancePhase(ended);
+    let scored = engine.advancePhase(ended);
+    scored = engine.submitHarvestFeeding(scored, "p1", { grainToFood: 0, vegetableToFood: 0 });
+    scored = engine.submitHarvestFeeding(scored, "p2", { grainToFood: 0, vegetableToFood: 0 });
 
     expect(scored.phase).toBe("GAME_END");
     expect(scored.players[0].score?.total).toBeTypeOf("number");
     expect(scored.winnerIds.length).toBeGreaterThan(0);
+  });
+
+  it("waits for player feeding choices during harvest", () => {
+    const { engine, state } = startTwoPlayerGame();
+    const harvest = engine.advancePhase({
+      ...state,
+      round: 4,
+      phase: "HARVEST" as const,
+      players: state.players.map((player) => ({
+        ...player,
+        resources: { ...player.resources, food: 0, grain: 2, vegetable: 1 },
+      })),
+    });
+
+    expect(harvest.phase).toBe("HARVEST");
+    expect(harvest.harvestFeeding?.submittedPlayerIds).toEqual([]);
+    expect(harvest.players[0].resources.food).toBe(0);
+  });
+
+  it("converts grain and vegetables to food at one to one before feeding", () => {
+    const { engine, state } = startTwoPlayerGame();
+    let harvest = engine.advancePhase({
+      ...state,
+      round: 4,
+      phase: "HARVEST" as const,
+      players: state.players.map((player) => ({
+        ...player,
+        resources: { ...player.resources, food: 0, grain: 2, vegetable: 1 },
+      })),
+    });
+
+    harvest = engine.submitHarvestFeeding(harvest, "p1", { grainToFood: 2, vegetableToFood: 1 });
+
+    expect(harvest.phase).toBe("HARVEST");
+    expect(harvest.players[0].resources.grain).toBe(0);
+    expect(harvest.players[0].resources.vegetable).toBe(0);
+    expect(harvest.players[0].resources.food).toBe(3);
+    expect(harvest.harvestFeeding?.submittedPlayerIds).toEqual(["p1"]);
+  });
+
+  it("rejects feeding conversions above available crops", () => {
+    const { engine, state } = startTwoPlayerGame();
+    const harvest = engine.advancePhase({
+      ...state,
+      round: 4,
+      phase: "HARVEST" as const,
+      players: state.players.map((player) => ({
+        ...player,
+        resources: { ...player.resources, food: 0, grain: 1, vegetable: 0 },
+      })),
+    });
+
+    const rejected = engine.submitHarvestFeeding(harvest, "p1", { grainToFood: 2, vegetableToFood: 0 });
+
+    expect(rejected).toEqual({
+      ...harvest,
+      lastError: "谷物不足，不能转换。",
+    });
+  });
+
+  it("finishes harvest after every player submits feeding", () => {
+    const { engine, state } = startTwoPlayerGame();
+    let harvest = engine.advancePhase({
+      ...state,
+      round: 4,
+      phase: "HARVEST" as const,
+      players: state.players.map((player) => ({
+        ...player,
+        resources: { ...player.resources, food: 0, grain: 4, vegetable: 0 },
+      })),
+    });
+
+    harvest = engine.submitHarvestFeeding(harvest, "p1", { grainToFood: 4, vegetableToFood: 0 });
+    harvest = engine.submitHarvestFeeding(harvest, "p2", { grainToFood: 1, vegetableToFood: 0 });
+
+    expect(harvest.phase).toBe("ROUND_PREPARE");
+    expect(harvest.round).toBe(5);
+    expect(harvest.harvestFeeding).toBeNull();
+    expect(harvest.players[0].beggingCards).toBe(0);
+    expect(harvest.players[1].beggingCards).toBe(3);
   });
 
   it("does not reset a game after it has already started", () => {

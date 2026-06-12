@@ -12,6 +12,7 @@ import type {
   RestoreSessionPayload,
   RoomSnapshot,
   StartGamePayload,
+  SubmitHarvestFeedingPayload,
 } from "../../shared/types";
 import type { GameState } from "../../state/GameState";
 import { createAuthToken, resolveAuthToken } from "../db/authTokens";
@@ -25,9 +26,17 @@ interface RoomRecord {
 const rooms = new Map<string, RoomRecord>();
 const engine = new GameEngine();
 const socketUsers = new Map<string, string>();
+const departedRoomPlayers = new Map<string, Set<string>>();
+const autoAdvancePhases: ReadonlySet<GameState["phase"]> = new Set(["RETURN_HOME", "NEXT_ROUND", "ROUND_PREPARE"]);
+const scheduledAutoAdvances = new Map<string, Array<ReturnType<typeof setTimeout>>>();
 
 export function attachSocketServer(httpServer: HttpServer): Server {
   loadRoomSnapshots().forEach((snapshot) => {
+    if (snapshot.game.phase === "WAITING" || snapshot.game.players.length === 0) {
+      deleteRoomSnapshot(snapshot.roomId);
+      return;
+    }
+
     rooms.set(snapshot.roomId, {
       roomId: snapshot.roomId,
       game: snapshot.game,
@@ -114,6 +123,30 @@ export function attachSocketServer(httpServer: HttpServer): Server {
         return;
       }
 
+      const existingPlayer = room.game.players.some((player) => player.id === username);
+      if (room.game.phase !== "WAITING") {
+        if (hasDepartedRoom(payload.roomId, username)) {
+          socket.emit(SocketEvents.ACTION_NOTICE, {
+            message: "你已经退出该房间，游戏进行中不能重新加入。",
+          });
+          return;
+        }
+
+        if (existingPlayer) {
+          socket.join(payload.roomId);
+          socket.emit(SocketEvents.SYNC_STATE, {
+            roomId: room.roomId,
+            game: room.game,
+          } satisfies RoomSnapshot);
+          return;
+        }
+
+        socket.emit(SocketEvents.ACTION_NOTICE, {
+          message: "游戏已经开始，不能中途加入房间。",
+        });
+        return;
+      }
+
       leaveWaitingRoomsForUser(io, socket, username, payload.roomId);
       room.game = engine.addPlayer(room.game, {
         id: username,
@@ -165,9 +198,10 @@ export function attachSocketServer(httpServer: HttpServer): Server {
       }
 
       socket.leave(payload.roomId);
+      markDepartedRoom(payload.roomId, username);
       socket.emit(SocketEvents.ROOM_LEFT, {
         roomId: payload.roomId,
-        message: "已离开房间视图，游戏中的玩家席位保留。",
+        message: "已退出房间。游戏已经开始，不能中途重新加入。",
       });
       socket.emit(SocketEvents.ROOM_LIST, createRoomList());
     });
@@ -191,6 +225,7 @@ export function attachSocketServer(httpServer: HttpServer): Server {
 
       room.game = engine.placeWorker(room.game, payload.playerId, payload.workerId, payload.actionSpaceId, payload.input);
       syncRoom(io, room);
+      scheduleAutoAdvanceNonInteractivePhases(io, room);
       io.emit(SocketEvents.ROOM_LIST, createRoomList());
     });
 
@@ -216,6 +251,37 @@ export function attachSocketServer(httpServer: HttpServer): Server {
 
     socket.on(SocketEvents.FAMILY_GROWTH, (payload: PlaceWorkerPayload) => {
       routePlaceWorker(io, payload);
+    });
+
+    socket.on(SocketEvents.SUBMIT_HARVEST_FEEDING, (payload: SubmitHarvestFeedingPayload) => {
+      const room = rooms.get(payload.roomId);
+      const username = socketUsers.get(socket.id);
+      if (!room) {
+        return;
+      }
+      if (username !== payload.playerId) {
+        socket.emit(SocketEvents.ACTION_NOTICE, {
+          message: "只能确认自己的收获喂食。",
+        });
+        return;
+      }
+
+      const beforePhase = room.game.phase;
+      const beforeRound = room.game.round;
+      room.game = engine.submitHarvestFeeding(room.game, payload.playerId, {
+        grainToFood: payload.grainToFood,
+        vegetableToFood: payload.vegetableToFood,
+      });
+      syncRoom(io, room);
+
+      if (beforePhase === "HARVEST" && (room.game.phase !== "HARVEST" || room.game.round !== beforeRound)) {
+        io.to(room.roomId).emit(SocketEvents.ACTION_NOTICE, {
+          message: "喂养完成，动物繁殖，进入下一回合。",
+        });
+        scheduleAutoAdvanceNonInteractivePhases(io, room);
+      }
+
+      io.emit(SocketEvents.ROOM_LIST, createRoomList());
     });
 
     socket.on(SocketEvents.END_ACTION, (payload: StartGamePayload) => {
@@ -258,11 +324,15 @@ function createRoomList() {
       id: player.id,
       name: player.name,
     })),
-  }));
+  })).filter((room) => room.phase === "WAITING" && room.players.length > 0);
 }
 
 function findUserRoom(username: string): RoomRecord | null {
-  return Array.from(rooms.values()).find((room) => room.game.players.some((player) => player.id === username)) ?? null;
+  return (
+    Array.from(rooms.values()).find(
+      (room) => !hasDepartedRoom(room.roomId, username) && room.game.players.some((player) => player.id === username),
+    ) ?? null
+  );
 }
 
 function leaveWaitingRoomsForUser(io: Server, socket: Socket, username: string, exceptRoomId?: string): void {
@@ -308,6 +378,16 @@ function syncRoom(io: Server, room: RoomRecord): void {
   io.to(room.roomId).emit(SocketEvents.SYNC_STATE, snapshot);
 }
 
+function markDepartedRoom(roomId: string, username: string): void {
+  const departedPlayers = departedRoomPlayers.get(roomId) ?? new Set<string>();
+  departedPlayers.add(username);
+  departedRoomPlayers.set(roomId, departedPlayers);
+}
+
+function hasDepartedRoom(roomId: string, username: string): boolean {
+  return departedRoomPlayers.get(roomId)?.has(username) ?? false;
+}
+
 function routePlaceWorker(io: Server, payload: PlaceWorkerPayload): void {
   const room = rooms.get(payload.roomId);
   if (!room) {
@@ -316,7 +396,84 @@ function routePlaceWorker(io: Server, payload: PlaceWorkerPayload): void {
 
   room.game = engine.placeWorker(room.game, payload.playerId, payload.workerId, payload.actionSpaceId, payload.input);
   syncRoom(io, room);
+  scheduleAutoAdvanceNonInteractivePhases(io, room);
   io.emit(SocketEvents.ROOM_LIST, createRoomList());
+}
+
+function scheduleAutoAdvanceNonInteractivePhases(io: Server, room: RoomRecord): void {
+  if (!autoAdvancePhases.has(room.game.phase)) {
+    return;
+  }
+
+  clearScheduledAutoAdvance(room.roomId);
+  const roomId = room.roomId;
+  const phaseToAdvance = room.game.phase;
+
+  const noticeTimer = setTimeout(() => {
+    const currentRoom = rooms.get(roomId);
+    if (!currentRoom || currentRoom.game.phase !== phaseToAdvance) {
+      clearScheduledAutoAdvance(roomId);
+      return;
+    }
+
+    io.to(roomId).emit(SocketEvents.ACTION_NOTICE, {
+      message: createAutoAdvanceNotice(currentRoom.game),
+    });
+
+    const advanceTimer = setTimeout(() => {
+      const latestRoom = rooms.get(roomId);
+      if (!latestRoom || latestRoom.game.phase !== phaseToAdvance) {
+        clearScheduledAutoAdvance(roomId);
+        return;
+      }
+
+      latestRoom.game = autoAdvanceNonInteractivePhases(latestRoom.game);
+      syncRoom(io, latestRoom);
+      io.emit(SocketEvents.ROOM_LIST, createRoomList());
+      clearScheduledAutoAdvance(roomId);
+    }, 1000);
+
+    scheduledAutoAdvances.set(roomId, [noticeTimer, advanceTimer]);
+  }, 500);
+
+  scheduledAutoAdvances.set(roomId, [noticeTimer]);
+}
+
+function clearScheduledAutoAdvance(roomId: string): void {
+  const timers = scheduledAutoAdvances.get(roomId);
+  if (!timers) {
+    return;
+  }
+
+  timers.forEach((timer) => clearTimeout(timer));
+  scheduledAutoAdvances.delete(roomId);
+}
+
+function createAutoAdvanceNotice(state: GameState): string {
+  if (state.phase === "RETURN_HOME") {
+    const afterReturnHome = engine.advancePhase(state);
+    return afterReturnHome.phase === "HARVEST" ? "工人回家，进入收获阶段。" : "工人回家，准备下一回合。";
+  }
+
+  if (state.phase === "NEXT_ROUND") {
+    return "进入下一回合。";
+  }
+
+  return "回合准备完成。";
+}
+
+function autoAdvanceNonInteractivePhases(state: GameState): GameState {
+  let next = state;
+
+  while (autoAdvancePhases.has(next.phase)) {
+    const advanced = engine.advancePhase(next);
+    if (advanced === next) {
+      break;
+    }
+    next = advanced;
+  }
+
+  return next;
 }
 
 function emitUnavailableCardNotice(io: Server, socket: Socket, payload: CardActionPayload): void {

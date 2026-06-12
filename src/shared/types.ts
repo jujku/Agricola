@@ -55,6 +55,13 @@ export interface CardActionPayload {
   input?: ActionInput;
 }
 
+export interface SubmitHarvestFeedingPayload {
+  roomId: string;
+  playerId: string;
+  grainToFood: number;
+  vegetableToFood: number;
+}
+
 export interface ActionNotice {
   message: string;
 }

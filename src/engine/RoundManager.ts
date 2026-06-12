@@ -37,6 +37,7 @@ export class RoundManager {
       ...state,
       phase: "WORK_PHASE",
       stage: "WORK_PHASE",
+      harvestFeeding: null,
       roundDeck: state.roundDeck.slice(nextCard ? 1 : 0),
       roundCards,
       actionSpaces: replenished,

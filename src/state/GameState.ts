@@ -2,6 +2,11 @@ import type { ActionSpaceState } from "./ActionSpaceState";
 import type { CardState } from "./CardState";
 import type { PlayerState } from "./PlayerState";
 
+export interface HarvestFeedingState {
+  round: number;
+  submittedPlayerIds: string[];
+}
+
 export type GamePhase =
   | "WAITING"
   | "SETUP"
@@ -24,6 +29,7 @@ export interface GameState {
   startingPlayer: string | null;
   roundDeck: CardState[];
   majorImprovements: CardState[];
+  harvestFeeding: HarvestFeedingState | null;
   currentPlayerIndex: number;
   actionLog: string[];
   winnerIds: string[];

@@ -89,6 +89,13 @@ export function leaveRoom(roomId: string): void {
   socket.emit(SocketEvents.LEAVE_ROOM, { roomId });
 }
 
+export function logout(): void {
+  clearStoredToken();
+  useGameStore.getState().logoutLocal();
+  socket.disconnect();
+  socket.connect();
+}
+
 export function startGame(roomId: string): void {
   socket.emit(SocketEvents.START_GAME, { roomId });
 }
@@ -111,6 +118,15 @@ export function placeWorker(roomId: string, playerId: string, workerId: string, 
   });
 }
 
+export function submitHarvestFeeding(roomId: string, playerId: string, grainToFood: number, vegetableToFood: number): void {
+  socket.emit(SocketEvents.SUBMIT_HARVEST_FEEDING, {
+    roomId,
+    playerId,
+    grainToFood,
+    vegetableToFood,
+  });
+}
+
 export function endAction(roomId: string): void {
   socket.emit(SocketEvents.END_ACTION, { roomId });
 }
@@ -127,4 +143,11 @@ function storeToken(token: string): void {
     return;
   }
   window.localStorage.setItem(tokenStorageKey, token);
+}
+
+function clearStoredToken(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.localStorage.removeItem(tokenStorageKey);
 }

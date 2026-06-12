@@ -5,6 +5,7 @@ import { majorImprovements } from "../config/majorImprovements";
 import { ActionResolver } from "./ActionResolver";
 import { FarmManager } from "./FarmManager";
 import { HarvestManager } from "./HarvestManager";
+import type { HarvestFeedingInput } from "./HarvestManager";
 import { RoundManager } from "./RoundManager";
 
 export interface PlayerInput {
@@ -37,6 +38,7 @@ export class GameEngine {
         victoryPoints: card.victoryPoints,
         purchasedBy: null,
       })),
+      harvestFeeding: null,
       currentPlayerIndex: 0,
       actionLog: [],
       winnerIds: [],
@@ -101,6 +103,7 @@ export class GameEngine {
       actionSpaces: this.roundManager.createInitialActionSpaces(state.players.length),
       roundCards: [],
       roundDeck: this.roundManager.createRoundDeck(),
+      harvestFeeding: null,
       actionLog: ["游戏开始。"],
       lastError: null,
     };
@@ -147,6 +150,10 @@ export class GameEngine {
       }
       return state;
     }, state);
+  }
+
+  submitHarvestFeeding(state: GameState, playerId: string, input: HarvestFeedingInput): GameState {
+    return this.guard(() => this.harvestManager.submitFeeding(state, playerId, input), state);
   }
 
   private createPlayer(player: PlayerInput, isStartingPlayer: boolean): PlayerState {
