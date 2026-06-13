@@ -12,26 +12,32 @@ import type {
   RestoreSessionPayload,
   RoomSnapshot,
   StartGamePayload,
+  SubmitHarvestFieldPayload,
   SubmitHarvestFeedingPayload,
+  SubmitHarvestBreedingPayload,
 } from "../../shared/types";
 import type { GameState } from "../../state/GameState";
+import { FarmManager } from "../../engine/FarmManager";
 import { createAuthToken, resolveAuthToken } from "../db/authTokens";
-import { deleteRoomSnapshot, loadRoomSnapshots, loginUser, registerUser, saveRoomSnapshot } from "../db/sqlite";
+import { deleteRoomSnapshot, loadStoredRoomSnapshots, loginUser, registerUser, saveRoomSnapshot } from "../db/sqlite";
+import { findRecoverableUserRoom } from "./roomRecovery";
 
-interface RoomRecord {
+export interface RoomRecord {
   roomId: string;
   game: GameState;
+  updatedAt: string;
 }
 
 const rooms = new Map<string, RoomRecord>();
 const engine = new GameEngine();
+const farmManager = new FarmManager();
 const socketUsers = new Map<string, string>();
 const departedRoomPlayers = new Map<string, Set<string>>();
-const autoAdvancePhases: ReadonlySet<GameState["phase"]> = new Set(["RETURN_HOME", "NEXT_ROUND", "ROUND_PREPARE"]);
+const autoAdvancePhases: ReadonlySet<GameState["phase"]> = new Set(["RETURN_HOME", "HARVEST", "NEXT_ROUND", "ROUND_PREPARE"]);
 const scheduledAutoAdvances = new Map<string, Array<ReturnType<typeof setTimeout>>>();
 
 export function attachSocketServer(httpServer: HttpServer): Server {
-  loadRoomSnapshots().forEach((snapshot) => {
+  loadStoredRoomSnapshots().forEach(({ snapshot, updatedAt }) => {
     if (snapshot.game.phase === "WAITING" || snapshot.game.players.length === 0) {
       deleteRoomSnapshot(snapshot.roomId);
       return;
@@ -39,7 +45,8 @@ export function attachSocketServer(httpServer: HttpServer): Server {
 
     rooms.set(snapshot.roomId, {
       roomId: snapshot.roomId,
-      game: snapshot.game,
+      game: migrateGameState(snapshot.game),
+      updatedAt,
     });
   });
 
@@ -104,7 +111,7 @@ export function attachSocketServer(httpServer: HttpServer): Server {
         id: username,
         name: username,
       });
-      const room: RoomRecord = { roomId, game };
+      const room: RoomRecord = { roomId, game, updatedAt: new Date().toISOString() };
 
       rooms.set(roomId, room);
       socket.join(roomId);
@@ -253,6 +260,24 @@ export function attachSocketServer(httpServer: HttpServer): Server {
       routePlaceWorker(io, payload);
     });
 
+    socket.on(SocketEvents.SUBMIT_HARVEST_FIELD, (payload: SubmitHarvestFieldPayload) => {
+      const room = rooms.get(payload.roomId);
+      const username = socketUsers.get(socket.id);
+      if (!room) {
+        return;
+      }
+      if (username !== payload.playerId) {
+        socket.emit(SocketEvents.ACTION_NOTICE, {
+          message: "只能确认自己的田地收获。",
+        });
+        return;
+      }
+
+      room.game = engine.submitHarvestField(room.game, payload.playerId);
+      syncRoom(io, room);
+      io.emit(SocketEvents.ROOM_LIST, createRoomList());
+    });
+
     socket.on(SocketEvents.SUBMIT_HARVEST_FEEDING, (payload: SubmitHarvestFeedingPayload) => {
       const room = rooms.get(payload.roomId);
       const username = socketUsers.get(socket.id);
@@ -271,6 +296,7 @@ export function attachSocketServer(httpServer: HttpServer): Server {
       room.game = engine.submitHarvestFeeding(room.game, payload.playerId, {
         grainToFood: payload.grainToFood,
         vegetableToFood: payload.vegetableToFood,
+        cookedAnimals: payload.cookedAnimals,
       });
       syncRoom(io, room);
 
@@ -281,6 +307,25 @@ export function attachSocketServer(httpServer: HttpServer): Server {
         scheduleAutoAdvanceNonInteractivePhases(io, room);
       }
 
+      io.emit(SocketEvents.ROOM_LIST, createRoomList());
+    });
+
+    socket.on(SocketEvents.SUBMIT_HARVEST_BREEDING, (payload: SubmitHarvestBreedingPayload) => {
+      const room = rooms.get(payload.roomId);
+      const username = socketUsers.get(socket.id);
+      if (!room) {
+        return;
+      }
+      if (username !== payload.playerId) {
+        socket.emit(SocketEvents.ACTION_NOTICE, {
+          message: "只能确认自己的繁殖处理。",
+        });
+        return;
+      }
+
+      room.game = engine.submitHarvestBreeding(room.game, payload.playerId, payload.resolution);
+      syncRoom(io, room);
+      scheduleAutoAdvanceNonInteractivePhases(io, room);
       io.emit(SocketEvents.ROOM_LIST, createRoomList());
     });
 
@@ -328,11 +373,7 @@ function createRoomList() {
 }
 
 function findUserRoom(username: string): RoomRecord | null {
-  return (
-    Array.from(rooms.values()).find(
-      (room) => !hasDepartedRoom(room.roomId, username) && room.game.players.some((player) => player.id === username),
-    ) ?? null
-  );
+  return findRecoverableUserRoom(rooms.values(), username, hasDepartedRoom);
 }
 
 function leaveWaitingRoomsForUser(io: Server, socket: Socket, username: string, exceptRoomId?: string): void {
@@ -369,6 +410,8 @@ function syncUserRoom(io: Server, socket: Socket, username: string): void {
 }
 
 function syncRoom(io: Server, room: RoomRecord): void {
+  room.game = migrateGameState(room.game);
+  room.updatedAt = new Date().toISOString();
   const snapshot: RoomSnapshot = {
     roomId: room.roomId,
     game: room.game,
@@ -376,6 +419,18 @@ function syncRoom(io: Server, room: RoomRecord): void {
 
   saveRoomSnapshot(snapshot);
   io.to(room.roomId).emit(SocketEvents.SYNC_STATE, snapshot);
+}
+
+function migrateGameState(game: GameState): GameState {
+  return {
+    ...game,
+    harvestField: game.harvestField ?? null,
+    harvestBreeding: game.harvestBreeding ?? null,
+    players: game.players.map((player) => ({
+      ...player,
+      farm: farmManager.migrateFarm(player.farm),
+    })),
+  };
 }
 
 function markDepartedRoom(roomId: string, username: string): void {
@@ -455,6 +510,10 @@ function createAutoAdvanceNotice(state: GameState): string {
     return afterReturnHome.phase === "HARVEST" ? "工人回家，进入收获阶段。" : "工人回家，准备下一回合。";
   }
 
+  if (state.phase === "HARVEST") {
+    return "收获田地。";
+  }
+
   if (state.phase === "NEXT_ROUND") {
     return "进入下一回合。";
   }
@@ -466,6 +525,12 @@ function autoAdvanceNonInteractivePhases(state: GameState): GameState {
   let next = state;
 
   while (autoAdvancePhases.has(next.phase)) {
+    if (
+      next.phase === "HARVEST" &&
+      (next.harvestField?.round === next.round || next.harvestFeeding?.round === next.round || next.harvestBreeding?.round === next.round)
+    ) {
+      break;
+    }
     const advanced = engine.advancePhase(next);
     if (advanced === next) {
       break;

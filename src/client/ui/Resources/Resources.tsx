@@ -41,7 +41,13 @@ export function Resources({ player }: ResourcesProps) {
     <section className="resource-panel">
       <header className="resource-panel__header">
         <h2>资源</h2>
-        {player ? <span>乞讨卡 {player.beggingCards}</span> : null}
+        {player ? (
+          <span className="begging-card-count">
+            <RESOURCE_ICONS.begging size={26} />
+            <span>乞讨</span>
+            {player.beggingCards}
+          </span>
+        ) : null}
       </header>
 
       {!player ? (

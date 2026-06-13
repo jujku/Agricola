@@ -252,6 +252,28 @@ button:hover {
   font-weight: 900;
 }
 
+.starting-player-mark,
+.begging-card-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  vertical-align: middle;
+}
+
+.resource-sprite-icon {
+  flex: 0 0 auto;
+  display: inline-block;
+  filter: drop-shadow(0 2px 1px rgba(58, 31, 0, 0.28));
+}
+
+.resource-sprite-icon img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  user-select: none;
+}
+
 .action-space-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -271,6 +293,13 @@ button:hover {
   background: #fff0c4;
   color: var(--farm-ink);
   font-weight: 800;
+}
+
+.board-panel__turn--top {
+  margin: 0 0 12px;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--player-color, var(--farm-red)) 22%, #fff0c4), #fff0c4 58%),
+    #fff0c4;
 }
 
 .board-panel__turn span:last-child {
@@ -575,6 +604,47 @@ button:hover {
   box-shadow: 2px 3px 0 rgba(90, 55, 20, 0.4);
 }
 
+.farm-tile__fence {
+  position: absolute;
+  z-index: 4;
+  background: var(--player-color, #5f3518);
+  border-radius: 999px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 230, 170, 0.35),
+    0 1px 1px rgba(58, 31, 0, 0.38);
+  pointer-events: none;
+}
+
+.farm-tile__fence--top,
+.farm-tile__fence--bottom {
+  left: -2px;
+  right: -2px;
+  height: 6px;
+}
+
+.farm-tile__fence--top {
+  top: -2px;
+}
+
+.farm-tile__fence--bottom {
+  bottom: -2px;
+}
+
+.farm-tile__fence--left,
+.farm-tile__fence--right {
+  top: -2px;
+  bottom: -2px;
+  width: 6px;
+}
+
+.farm-tile__fence--left {
+  left: -2px;
+}
+
+.farm-tile__fence--right {
+  right: -2px;
+}
+
 .farm-tile small {
   position: absolute;
   right: 4px;
@@ -777,6 +847,12 @@ button:hover {
   filter: drop-shadow(0 3px 2px rgba(58, 31, 0, 0.35));
 }
 
+.flying-resource .resource-sprite-icon {
+  width: 28px !important;
+  height: 28px !important;
+  transform-origin: center;
+}
+
 @keyframes fly-resource {
   0% {
     opacity: 0;
@@ -942,6 +1018,173 @@ button:hover {
   flex-wrap: wrap;
 }
 
+.game-modal__actions button:disabled,
+.segmented button:disabled,
+.animal-placement-panel button:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.45);
+  opacity: 0.58;
+  transform: none;
+}
+
+.farm-action-modal {
+  width: min(620px, 96vw);
+  text-align: left;
+}
+
+.farm-action-modal .game-modal__eyebrow,
+.farm-action-modal h2,
+.farm-action-modal > p {
+  justify-self: center;
+  text-align: center;
+}
+
+.farm-picker {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(58px, 82px));
+  grid-template-rows: repeat(3, minmax(58px, 82px));
+  justify-content: center;
+  gap: 8px;
+  padding: 10px;
+  border: 3px solid var(--farm-stroke);
+  border-radius: 14px;
+  background: var(--farm-wood);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.28);
+}
+
+.farm-picker__cell {
+  position: relative;
+  min-height: 0;
+  aspect-ratio: 1;
+  padding: 6px;
+  display: grid;
+  place-items: center;
+  gap: 2px;
+  border: 2px solid var(--farm-stroke);
+  border-radius: 8px;
+  background: repeating-linear-gradient(45deg, #c8a87a 0 2px, #c0a070 2px 8px);
+  color: var(--farm-ink);
+  box-shadow: 2px 3px 0 rgba(90, 55, 20, 0.36);
+}
+
+.farm-picker__cell:hover {
+  outline: 3px solid rgba(240, 176, 48, 0.72);
+  transform: translateY(-1px);
+}
+
+.farm-picker__cell.selected {
+  border-color: #2f7a2a;
+  background: #dce8a8;
+  outline: 3px solid rgba(90, 155, 58, 0.5);
+}
+
+.farm-picker__cell.invalid {
+  cursor: not-allowed;
+  filter: grayscale(0.55);
+  opacity: 0.55;
+}
+
+.farm-picker__cell strong {
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.farm-picker__cell small {
+  position: absolute;
+  right: 5px;
+  bottom: 3px;
+  color: rgba(58, 31, 0, 0.62);
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.farm-picker__edge {
+  position: absolute;
+  z-index: 2;
+  background: rgba(95, 53, 24, 0.38);
+  border-radius: 999px;
+  transition: background 120ms ease, box-shadow 120ms ease;
+}
+
+.farm-picker__edge:hover,
+.farm-picker__edge.selected,
+.farm-picker__edge.placed {
+  background: var(--player-color, #5f3518);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 230, 170, 0.4),
+    0 0 0 3px rgba(240, 176, 48, 0.42);
+}
+
+.farm-picker__edge.placed {
+  opacity: 0.72;
+  cursor: not-allowed;
+  box-shadow: inset 0 1px 0 rgba(255, 230, 170, 0.3);
+}
+
+.farm-picker__edge.invalid {
+  cursor: not-allowed;
+  background: rgba(95, 53, 24, 0.14);
+  box-shadow: none;
+}
+
+.farm-picker__edge--top,
+.farm-picker__edge--bottom {
+  left: -3px;
+  right: -3px;
+  height: 9px;
+}
+
+.farm-picker__edge--top {
+  top: -3px;
+}
+
+.farm-picker__edge--bottom {
+  bottom: -3px;
+}
+
+.farm-picker__edge--left,
+.farm-picker__edge--right {
+  top: -3px;
+  bottom: -3px;
+  width: 9px;
+}
+
+.farm-picker__edge--left {
+  left: -3px;
+}
+
+.farm-picker__edge--right {
+  right: -3px;
+}
+
+.farm-action-summary,
+.animal-placement-panel,
+.room-cost-panel {
+  border: 2px dashed rgba(90, 55, 20, 0.45);
+  border-radius: 12px;
+  padding: 9px 10px;
+  background: #fff0c4;
+  color: var(--farm-muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.animal-placement-panel,
+.room-cost-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.room-cost-panel span {
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: var(--farm-paper);
+  color: var(--farm-stroke);
+}
+
 .harvest-modal {
   width: min(430px, 100%);
   text-align: left;
@@ -1034,6 +1277,60 @@ button:hover {
   justify-self: center;
   color: var(--farm-green);
   font-size: 15px;
+}
+
+.harvest-control--with-icon {
+  grid-template-columns: auto 1fr 92px;
+}
+
+.harvest-cook-panel {
+  display: grid;
+  gap: 8px;
+}
+
+.breeding-placement-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.breeding-placement-list button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.breeding-placement-list button.active {
+  background: var(--farm-green);
+}
+
+.harvest-summary--warning {
+  border-style: solid;
+  border-color: var(--farm-red);
+}
+
+.harvest-resource-badge {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 9px;
+  border: 2px solid var(--farm-stroke);
+  border-radius: 999px;
+  background: var(--farm-paper);
+  color: var(--farm-ink);
+  font-weight: 900;
+}
+
+.harvest-resource-badge b {
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  display: inline-grid;
+  place-items: center;
+  background: var(--farm-stroke);
+  color: var(--farm-paper-light);
+  font-size: 12px;
 }
 
 @keyframes modal-pop {

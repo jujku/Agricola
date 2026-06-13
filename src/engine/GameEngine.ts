@@ -1,6 +1,6 @@
 import type { GameState } from "../state/GameState";
 import type { PlayerState, ResourceState, AnimalState, WorkerState } from "../state/PlayerState";
-import type { ActionInput } from "../shared/types";
+import type { ActionInput, AnimalOverflowResolution } from "../shared/types";
 import { majorImprovements } from "../config/majorImprovements";
 import { ActionResolver } from "./ActionResolver";
 import { FarmManager } from "./FarmManager";
@@ -38,7 +38,9 @@ export class GameEngine {
         victoryPoints: card.victoryPoints,
         purchasedBy: null,
       })),
+      harvestField: null,
       harvestFeeding: null,
+      harvestBreeding: null,
       currentPlayerIndex: 0,
       actionLog: [],
       winnerIds: [],
@@ -103,7 +105,9 @@ export class GameEngine {
       actionSpaces: this.roundManager.createInitialActionSpaces(state.players.length),
       roundCards: [],
       roundDeck: this.roundManager.createRoundDeck(),
+      harvestField: null,
       harvestFeeding: null,
+      harvestBreeding: null,
       actionLog: ["游戏开始。"],
       lastError: null,
     };
@@ -154,6 +158,14 @@ export class GameEngine {
 
   submitHarvestFeeding(state: GameState, playerId: string, input: HarvestFeedingInput): GameState {
     return this.guard(() => this.harvestManager.submitFeeding(state, playerId, input), state);
+  }
+
+  submitHarvestField(state: GameState, playerId: string): GameState {
+    return this.guard(() => this.harvestManager.submitField(state, playerId), state);
+  }
+
+  submitHarvestBreeding(state: GameState, playerId: string, resolution: AnimalOverflowResolution): GameState {
+    return this.guard(() => this.harvestManager.submitBreeding(state, playerId, resolution), state);
   }
 
   private createPlayer(player: PlayerInput, isStartingPlayer: boolean): PlayerState {

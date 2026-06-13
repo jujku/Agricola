@@ -1,0 +1,332 @@
+{
+  "frames": {
+    "wood": {
+      "image": "./wood.png",
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 47,
+        "y": 61,
+        "w": 308,
+        "h": 252
+      },
+      "offset": {
+        "x": 47,
+        "y": 61
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 308,
+        "h": 252
+      },
+      "trimmed": true,
+      "rotated": false,
+      "extruded": true,
+      "padding": 1
+    },
+    "clay": {
+      "image": "./clay.png",
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 352,
+        "y": 65,
+        "w": 308,
+        "h": 251
+      },
+      "offset": {
+        "x": 352,
+        "y": 65
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 308,
+        "h": 251
+      },
+      "trimmed": true,
+      "rotated": false,
+      "extruded": true,
+      "padding": 1
+    },
+    "stone": {
+      "image": "./stone.png",
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 666,
+        "y": 59,
+        "w": 320,
+        "h": 269
+      },
+      "offset": {
+        "x": 666,
+        "y": 59
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 320,
+        "h": 269
+      },
+      "trimmed": true,
+      "rotated": false,
+      "extruded": true,
+      "padding": 1
+    },
+    "reed": {
+      "image": "./reed.png",
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 1003,
+        "y": 38,
+        "w": 200,
+        "h": 299
+      },
+      "offset": {
+        "x": 1003,
+        "y": 38
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 200,
+        "h": 299
+      },
+      "trimmed": true,
+      "rotated": false,
+      "extruded": true,
+      "padding": 1
+    },
+    "food": {
+      "image": "./food.png",
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 1206,
+        "y": 119,
+        "w": 283,
+        "h": 213
+      },
+      "offset": {
+        "x": 1206,
+        "y": 119
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 283,
+        "h": 213
+      },
+      "trimmed": true,
+      "rotated": false,
+      "extruded": true,
+      "padding": 1
+    },
+    "grain": {
+      "image": "./grain.png",
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 75,
+        "y": 350,
+        "w": 289,
+        "h": 307
+      },
+      "offset": {
+        "x": 75,
+        "y": 350
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 289,
+        "h": 307
+      },
+      "trimmed": true,
+      "rotated": false,
+      "extruded": true,
+      "padding": 1
+    },
+    "vegetable": {
+      "image": "./vegetable.png",
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 423,
+        "y": 371,
+        "w": 331,
+        "h": 287
+      },
+      "offset": {
+        "x": 423,
+        "y": 371
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 331,
+        "h": 287
+      },
+      "trimmed": true,
+      "rotated": false,
+      "extruded": true,
+      "padding": 1
+    },
+    "begging": {
+      "image": "./begging.png",
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 778,
+        "y": 369,
+        "w": 296,
+        "h": 288
+      },
+      "offset": {
+        "x": 778,
+        "y": 369
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 296,
+        "h": 288
+      },
+      "trimmed": true,
+      "rotated": false,
+      "extruded": true,
+      "padding": 1
+    },
+    "starting": {
+      "image": "./starting.png",
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 1151,
+        "y": 377,
+        "w": 282,
+        "h": 280
+      },
+      "offset": {
+        "x": 1151,
+        "y": 377
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 282,
+        "h": 280
+      },
+      "trimmed": true,
+      "rotated": false,
+      "extruded": true,
+      "padding": 1
+    },
+    "sheep": {
+      "image": "./sheep.png",
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 151,
+        "y": 686,
+        "w": 330,
+        "h": 299
+      },
+      "offset": {
+        "x": 151,
+        "y": 686
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 330,
+        "h": 299
+      },
+      "trimmed": true,
+      "rotated": false,
+      "extruded": true,
+      "padding": 1
+    },
+    "boar": {
+      "image": "./boar.png",
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 543,
+        "y": 671,
+        "w": 374,
+        "h": 309
+      },
+      "offset": {
+        "x": 543,
+        "y": 671
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 374,
+        "h": 309
+      },
+      "trimmed": true,
+      "rotated": false,
+      "extruded": true,
+      "padding": 1
+    },
+    "cattle": {
+      "image": "./cattle.png",
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 967,
+        "y": 680,
+        "w": 447,
+        "h": 310
+      },
+      "offset": {
+        "x": 967,
+        "y": 680
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 447,
+        "h": 310
+      },
+      "trimmed": true,
+      "rotated": false,
+      "extruded": true,
+      "padding": 1
+    }
+  },
+  "meta": {
+    "source": "agricola-resources.png",
+    "alphaThreshold": 1
+  }
+}

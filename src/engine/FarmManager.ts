@@ -1,6 +1,6 @@
 import type { ResourceKey } from "../config/baseActions";
 import type { CellPosition } from "../shared/types";
-import type { FarmCell, FarmState, RoomMaterial } from "../state/FarmState";
+import type { AnimalGroup, FarmAnimalType, FarmCell, FarmState, FenceEdge, FenceEdgeSide, FenceSegment, RoomMaterial } from "../state/FarmState";
 import type { PlayerState } from "../state/PlayerState";
 
 export class FarmManager {
@@ -29,8 +29,54 @@ export class FarmManager {
       cells,
       roomMaterial: "wood",
       fencesUsed: 0,
+      fences: [],
+      fenceSegments: [],
       pastures: [],
+      animalHousing: {
+        house: { animal: null, count: 0 },
+        stables: [],
+        cells: [],
+      },
     };
+  }
+
+  migrateFarm(farm: FarmState): FarmState {
+    const fenceSegments = farm.fenceSegments?.length > 0 ? this.uniqueSegments(farm.fenceSegments) : this.uniqueSegments((farm.fences ?? []).map((edge) => this.edgeToSegment(edge)));
+    const withDefaults: FarmState = {
+      ...farm,
+      fences: farm.fences ?? fenceSegments.map((segment) => this.segmentToEdge(segment)),
+      fenceSegments,
+      pastures: (farm.pastures ?? []).map((pasture) => ({
+        ...pasture,
+        fenceEdges: pasture.fenceEdges ?? this.createBoundaryEdges(pasture.cells),
+        animalType: pasture.animalType ?? null,
+        animalCount: pasture.animalCount ?? 0,
+        capacity: pasture.capacity ?? this.calculatePastureCapacity(farm, pasture.cells),
+      })),
+      animalHousing: farm.animalHousing ?? {
+        house: { animal: null, count: 0 },
+        stables: farm.cells
+          .filter((cell) => cell.stable && !cell.pastureId)
+          .map((cell) => ({ row: cell.row, col: cell.col, animal: null, count: 0 })),
+        cells: [],
+      },
+    };
+    withDefaults.animalHousing = {
+      ...withDefaults.animalHousing,
+      cells: withDefaults.animalHousing.cells ?? this.createAnimalCellsFromPastures(withDefaults),
+    };
+
+    if (withDefaults.fenceSegments.length > 0) {
+      return this.recalculatePastures({ ...withDefaults, fencesUsed: withDefaults.fenceSegments.length });
+    }
+
+    const legacyFences = withDefaults.pastures.flatMap((pasture) => pasture.fenceEdges);
+    return this.recalculatePastures({
+      ...withDefaults,
+      fences: this.uniqueEdges(legacyFences),
+      fenceSegments: this.uniqueSegments(legacyFences.map((edge) => this.edgeToSegment(edge))),
+      fencesUsed: legacyFences.length > 0 ? this.uniqueEdges(legacyFences).length : withDefaults.fencesUsed,
+    });
   }
 
   plowField(player: PlayerState, position: CellPosition): PlayerState {
@@ -172,7 +218,20 @@ export class FarmManager {
       });
     });
 
-    return nextPlayer;
+    return {
+      ...nextPlayer,
+      farm: this.recalculatePastures({
+        ...nextPlayer.farm,
+        animalHousing: {
+          ...nextPlayer.farm.animalHousing,
+          stables: [
+            ...nextPlayer.farm.animalHousing.stables,
+            ...uniquePositions.map((position) => ({ row: position.row, col: position.col, animal: null, count: 0 as number })),
+          ],
+          cells: nextPlayer.farm.animalHousing.cells,
+        },
+      }),
+    };
   }
 
   buildFences(player: PlayerState, positions: CellPosition[]): PlayerState {
@@ -210,10 +269,235 @@ export class FarmManager {
 
     return {
       ...nextPlayer,
-      farm: {
+      farm: this.migrateFarm({
         ...nextPlayer.farm,
         fencesUsed: nextPlayer.farm.fencesUsed + fenceCost,
-        pastures: [...nextPlayer.farm.pastures, { id: pastureId, cells: uniquePositions }],
+        fences: this.uniqueEdges([...nextPlayer.farm.fences, ...this.createBoundaryEdges(uniquePositions)]),
+        fenceSegments: this.uniqueSegments([...nextPlayer.farm.fenceSegments, ...this.createBoundaryEdges(uniquePositions).map((edge) => this.edgeToSegment(edge))]),
+        pastures: [...nextPlayer.farm.pastures, { id: pastureId, cells: uniquePositions, fenceEdges: this.createBoundaryEdges(uniquePositions), animalType: null, animalCount: 0, capacity: this.calculatePastureCapacity(nextPlayer.farm, uniquePositions) }],
+      }),
+    };
+  }
+
+  buildFencesByEdges(player: PlayerState, edges: FenceEdge[]): PlayerState {
+    return this.buildFencesBySegments(player, edges.map((edge) => this.edgeToSegment(edge)));
+  }
+
+  buildFencesBySegments(player: PlayerState, segments: FenceSegment[]): PlayerState {
+    const farm = this.migrateFarm(player.farm);
+    const newSegments = this.uniqueSegments(segments).filter((segment) => !this.hasFenceSegment(farm, segment));
+    if (newSegments.length === 0) {
+      return player;
+    }
+    newSegments.forEach((segment) => this.assertFenceSegmentBuildable(farm, segment));
+    if (farm.fencesUsed + newSegments.length > 15) {
+      throw new Error("每个玩家最多15个栅栏。");
+    }
+
+    const paid = this.pay({ ...player, farm }, { wood: newSegments.length });
+    const nextFarm = this.recalculatePastures({
+      ...paid.farm,
+      fenceSegments: this.uniqueSegments([...paid.farm.fenceSegments, ...newSegments]),
+      fences: this.uniqueEdges([...paid.farm.fences, ...newSegments.map((segment) => this.segmentToEdge(segment))]),
+      fencesUsed: paid.farm.fencesUsed + newSegments.length,
+    });
+
+    if (nextFarm.pastures.length === paid.farm.pastures.length) {
+      throw new Error("围栏必须形成至少一个封闭牧场。");
+    }
+
+    return { ...paid, farm: nextFarm };
+  }
+
+  recalculatePastures(farm: FarmState): FarmState {
+    farm = {
+      ...farm,
+      fenceSegments: this.uniqueSegments(farm.fenceSegments ?? (farm.fences ?? []).map((edge) => this.edgeToSegment(edge))),
+    };
+    const passableCells = farm.cells.filter((cell) => !cell.room && !cell.field);
+    const passableKeys = new Set(passableCells.map((cell) => this.positionKey(cell)));
+    const seen = new Set<string>();
+    const pastures: FarmState["pastures"] = [];
+
+    passableCells.forEach((cell) => {
+      const key = this.positionKey(cell);
+      if (seen.has(key)) return;
+
+      const group: CellPosition[] = [];
+      const queue: CellPosition[] = [cell];
+      seen.add(key);
+
+      while (queue.length > 0) {
+        const current = queue.shift();
+        if (!current) continue;
+        group.push({ row: current.row, col: current.col });
+
+        (["top", "right", "bottom", "left"] as FenceEdgeSide[]).forEach((edge) => {
+          if (this.hasFence(farm, { row: current.row, col: current.col, edge })) return;
+          const neighbor = this.neighbor(current, edge);
+          if (!neighbor || !passableKeys.has(this.positionKey(neighbor))) return;
+          const neighborKey = this.positionKey(neighbor);
+          if (seen.has(neighborKey)) return;
+          seen.add(neighborKey);
+          queue.push(neighbor);
+        });
+      }
+
+      if (!this.isClosedGroup(farm, group)) return;
+
+      const pastureId = `pasture-${pastures.length + 1}`;
+      const previous = this.findMatchingPasture(farm.pastures, group);
+      const animalCells = farm.animalHousing.cells.filter((item) => group.some((cell) => cell.row === item.row && cell.col === item.col));
+      const animalType = animalCells.find((item) => item.animal)?.animal ?? previous?.animalType ?? null;
+      const animalCount = animalCells.reduce((sum, item) => sum + item.count, 0);
+      pastures.push({
+        id: previous?.id ?? pastureId,
+        cells: group,
+        fenceEdges: this.createBoundaryEdges(group),
+        animalType,
+        animalCount,
+        capacity: this.calculatePastureCapacity(farm, group),
+      });
+    });
+
+    const pastureByCell = new Map<string, string>();
+    pastures.forEach((pasture) => pasture.cells.forEach((cell) => pastureByCell.set(this.positionKey(cell), pasture.id)));
+
+    return {
+      ...farm,
+      fenceSegments: this.uniqueSegments(farm.fenceSegments),
+      fences: this.uniqueEdges(farm.fenceSegments.map((segment) => this.segmentToEdge(segment))),
+      fencesUsed: this.uniqueSegments(farm.fenceSegments).length,
+      pastures,
+      cells: farm.cells.map((cell) => ({
+        ...cell,
+        pastureId: pastureByCell.get(this.positionKey(cell)) ?? null,
+      })),
+      animalHousing: {
+        ...farm.animalHousing,
+        cells: farm.animalHousing.cells.filter((item) => item.count > 0),
+      },
+    };
+  }
+
+  placeAnimals(player: PlayerState, animal: FarmAnimalType, amount: number, placements: NonNullable<import("../shared/types").AnimalPlacementInput["placements"]>): PlayerState {
+    const totalPlaced = placements.reduce((sum, placement) => sum + placement.count, 0);
+    if (totalPlaced > amount) {
+      throw new Error("安置动物数量超过获得数量。");
+    }
+
+    let farm = this.migrateFarm(player.farm);
+    placements.forEach((placement) => {
+      if (placement.count <= 0) return;
+      if (placement.type === "house") {
+        farm = { ...farm, animalHousing: { ...farm.animalHousing, house: this.addToGroup(farm.animalHousing.house, animal, placement.count, 1) } };
+      }
+      if (placement.type === "stable") {
+        const stable = farm.animalHousing.stables.find((candidate) => candidate.row === placement.row && candidate.col === placement.col);
+        if (!stable) throw new Error("该马厩不能安置动物。");
+        const updatedStable = this.addToGroup(stable, animal, placement.count, 1);
+        farm = {
+          ...farm,
+          animalHousing: {
+            ...farm.animalHousing,
+            stables: farm.animalHousing.stables.map((candidate) => (candidate.row === placement.row && candidate.col === placement.col ? updatedStable : candidate)),
+          },
+        };
+      }
+      if (placement.type === "pasture") {
+        const pasture = farm.pastures.find((candidate) => candidate.id === placement.pastureId);
+        if (!pasture) throw new Error("牧场不存在。");
+        if (!pasture.cells.some((cell) => cell.row === placement.row && cell.col === placement.col)) {
+          throw new Error("该牧场格不能安置动物。");
+        }
+        const updated = this.addToGroup({ animal: pasture.animalType, count: pasture.animalCount }, animal, placement.count, pasture.capacity);
+        const existingCell = farm.animalHousing.cells.find((candidate) => candidate.row === placement.row && candidate.col === placement.col);
+        const updatedCell = this.addToGroup(existingCell ?? { row: placement.row, col: placement.col, animal: null, count: 0 }, animal, placement.count, pasture.capacity);
+        farm = {
+          ...farm,
+          animalHousing: {
+            ...farm.animalHousing,
+            cells: existingCell
+              ? farm.animalHousing.cells.map((candidate) => (candidate.row === placement.row && candidate.col === placement.col ? updatedCell : candidate))
+              : [...farm.animalHousing.cells, updatedCell],
+          },
+          pastures: farm.pastures.map((candidate) =>
+            candidate.id === placement.pastureId ? { ...candidate, animalType: updated.animal, animalCount: updated.count } : candidate,
+          ),
+        };
+      }
+    });
+
+    return {
+      ...player,
+      farm,
+      animals: {
+        ...player.animals,
+        [animal]: player.animals[animal] + totalPlaced,
+      },
+    };
+  }
+
+  removeAnimals(player: PlayerState, animal: FarmAnimalType, amount: number): PlayerState {
+    if (amount <= 0) return player;
+    if (player.animals[animal] < amount) {
+      throw new Error("动物不足，不能移除。");
+    }
+
+    let remaining = amount;
+    let farm = this.migrateFarm(player.farm);
+
+    const house = farm.animalHousing.house;
+    if (remaining > 0 && house.animal === animal && house.count > 0) {
+      const removed = Math.min(remaining, house.count);
+      remaining -= removed;
+      farm = {
+        ...farm,
+        animalHousing: {
+          ...farm.animalHousing,
+          house: { animal: house.count - removed > 0 ? animal : null, count: house.count - removed },
+        },
+      };
+    }
+
+    farm = {
+      ...farm,
+      animalHousing: {
+        ...farm.animalHousing,
+        stables: farm.animalHousing.stables.map((stable) => {
+          if (remaining <= 0 || stable.animal !== animal || stable.count <= 0) return stable;
+          const removed = Math.min(remaining, stable.count);
+          remaining -= removed;
+          return { ...stable, animal: stable.count - removed > 0 ? animal : null, count: stable.count - removed };
+        }),
+      },
+    };
+
+    farm = {
+      ...farm,
+      animalHousing: {
+        ...farm.animalHousing,
+        cells: farm.animalHousing.cells
+          .map((cell) => {
+            if (remaining <= 0 || cell.animal !== animal || cell.count <= 0) return cell;
+            const removed = Math.min(remaining, cell.count);
+            remaining -= removed;
+            return { ...cell, animal: cell.count - removed > 0 ? animal : null, count: cell.count - removed };
+          })
+          .filter((cell) => cell.count > 0),
+      },
+    };
+
+    if (remaining > 0) {
+      throw new Error("动物位置不足，不能移除。");
+    }
+
+    return {
+      ...player,
+      farm: this.recalculatePastures(farm),
+      animals: {
+        ...player.animals,
+        [animal]: player.animals[animal] - amount,
       },
     };
   }
@@ -360,6 +644,170 @@ export class FarmManager {
       ];
       return sum + neighbors.filter((neighbor) => !keys.has(neighbor)).length;
     }, 0);
+  }
+
+  private createBoundaryEdges(positions: CellPosition[]): FenceEdge[] {
+    const keys = new Set(positions.map((position) => this.positionKey(position)));
+    return positions.flatMap((position) =>
+      ([
+        { edge: "top" as const, neighbor: { row: position.row - 1, col: position.col } },
+        { edge: "right" as const, neighbor: { row: position.row, col: position.col + 1 } },
+        { edge: "bottom" as const, neighbor: { row: position.row + 1, col: position.col } },
+        { edge: "left" as const, neighbor: { row: position.row, col: position.col - 1 } },
+      ]).flatMap((item) => (keys.has(this.positionKey(item.neighbor)) ? [] : [{ row: position.row, col: position.col, edge: item.edge }])),
+    );
+  }
+
+  private createAnimalCellsFromPastures(farm: FarmState) {
+    return (farm.pastures ?? []).flatMap((pasture) => {
+      if (!pasture.animalType || pasture.animalCount <= 0) return [];
+      const firstCell = pasture.cells[0];
+      if (!firstCell) return [];
+      return [{ row: firstCell.row, col: firstCell.col, animal: pasture.animalType, count: pasture.animalCount }];
+    });
+  }
+
+  private edgeToSegment(edge: FenceEdge): FenceSegment {
+    const normalized = this.normalizeEdge(edge);
+    if (normalized.edge === "right") return { orientation: "vertical", row: normalized.row, col: normalized.col + 1 };
+    if (normalized.edge === "left") return { orientation: "vertical", row: normalized.row, col: normalized.col };
+    if (normalized.edge === "top") return { orientation: "horizontal", row: normalized.row, col: normalized.col };
+    return { orientation: "horizontal", row: normalized.row + 1, col: normalized.col };
+  }
+
+  private segmentToEdge(segment: FenceSegment): FenceEdge {
+    const normalized = this.normalizeSegment(segment);
+    if (normalized.orientation === "vertical") {
+      if (normalized.col === 0) return { row: normalized.row, col: 0, edge: "left" };
+      return { row: normalized.row, col: normalized.col - 1, edge: "right" };
+    }
+    if (normalized.row === 0) return { row: 0, col: normalized.col, edge: "top" };
+    return { row: normalized.row - 1, col: normalized.col, edge: "bottom" };
+  }
+
+  private uniqueSegments(segments: FenceSegment[]): FenceSegment[] {
+    const seen = new Set<string>();
+    return segments
+      .map((segment) => this.normalizeSegment(segment))
+      .filter((segment) => {
+        const key = this.segmentKey(segment);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  }
+
+  private normalizeSegment(segment: FenceSegment): FenceSegment {
+    return {
+      orientation: segment.orientation,
+      row: segment.row,
+      col: segment.col,
+    };
+  }
+
+  private segmentKey(segment: FenceSegment): string {
+    const normalized = this.normalizeSegment(segment);
+    return `${normalized.orientation}:${normalized.row}:${normalized.col}`;
+  }
+
+  private hasFenceSegment(farm: FarmState, segment: FenceSegment): boolean {
+    const key = this.segmentKey(segment);
+    return this.uniqueSegments(farm.fenceSegments ?? []).some((candidate) => this.segmentKey(candidate) === key);
+  }
+
+  private assertFenceSegmentBuildable(farm: FarmState, segment: FenceSegment): void {
+    const adjacentCells = this.segmentAdjacentCells(farm, segment);
+    if (adjacentCells.length === 0) {
+      throw new Error("围栏位置不存在。");
+    }
+    if (adjacentCells.some((cell) => cell.room || cell.field)) {
+      throw new Error("围栏不能贴着房屋或耕地建造。");
+    }
+  }
+
+  private segmentAdjacentCells(farm: FarmState, segment: FenceSegment): FarmCell[] {
+    const normalized = this.normalizeSegment(segment);
+    const positions =
+      normalized.orientation === "vertical"
+        ? [
+            { row: normalized.row, col: normalized.col - 1 },
+            { row: normalized.row, col: normalized.col },
+          ]
+        : [
+            { row: normalized.row - 1, col: normalized.col },
+            { row: normalized.row, col: normalized.col },
+          ];
+    return positions
+      .filter((position) => position.row >= 0 && position.col >= 0 && position.row < farm.rows && position.col < farm.cols)
+      .map((position) => farm.cells.find((cell) => cell.row === position.row && cell.col === position.col))
+      .filter((cell): cell is FarmCell => Boolean(cell));
+  }
+
+  private uniqueEdges(edges: FenceEdge[]): FenceEdge[] {
+    const seen = new Set<string>();
+    return edges
+      .map((edge) => this.normalizeEdge(edge))
+      .filter((edge) => {
+        const key = this.edgeKey(edge);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  }
+
+  private normalizeEdge(edge: FenceEdge): FenceEdge {
+    if (edge.edge === "left" && edge.col > 0) return { row: edge.row, col: edge.col - 1, edge: "right" };
+    if (edge.edge === "top" && edge.row > 0) return { row: edge.row - 1, col: edge.col, edge: "bottom" };
+    return edge;
+  }
+
+  private hasFence(farm: FarmState, edge: FenceEdge): boolean {
+    return this.hasFenceSegment(farm, this.edgeToSegment(edge));
+  }
+
+  private edgeKey(edge: FenceEdge): string {
+    const normalized = this.normalizeEdge(edge);
+    return `${normalized.row}:${normalized.col}:${normalized.edge}`;
+  }
+
+  private neighbor(position: CellPosition, edge: FenceEdgeSide): CellPosition | null {
+    const next =
+      edge === "top"
+        ? { row: position.row - 1, col: position.col }
+        : edge === "right"
+          ? { row: position.row, col: position.col + 1 }
+          : edge === "bottom"
+            ? { row: position.row + 1, col: position.col }
+            : { row: position.row, col: position.col - 1 };
+    if (next.row < 0 || next.col < 0 || next.row >= 3 || next.col >= 5) return null;
+    return next;
+  }
+
+  private isClosedGroup(farm: FarmState, group: CellPosition[]): boolean {
+    const keys = new Set(group.map((position) => this.positionKey(position)));
+    return group.every((position) =>
+      (["top", "right", "bottom", "left"] as FenceEdgeSide[]).every((edge) => {
+        const neighbor = this.neighbor(position, edge);
+        if (neighbor && keys.has(this.positionKey(neighbor))) return true;
+        return this.hasFence(farm, { row: position.row, col: position.col, edge });
+      }),
+    );
+  }
+
+  private calculatePastureCapacity(farm: FarmState, cells: CellPosition[]): number {
+    const stableCount = cells.filter((position) => farm.cells.some((cell) => cell.row === position.row && cell.col === position.col && cell.stable)).length;
+    return cells.length * 2 * (stableCount > 0 ? 2 : 1);
+  }
+
+  private findMatchingPasture(pastures: FarmState["pastures"], cells: CellPosition[]) {
+    const key = cells.map((cell) => this.positionKey(cell)).sort().join("|");
+    return pastures.find((pasture) => pasture.cells.map((cell) => this.positionKey(cell)).sort().join("|") === key);
+  }
+
+  private addToGroup<T extends AnimalGroup>(group: T, animal: FarmAnimalType, amount: number, capacity: number): T {
+    if (group.animal && group.animal !== animal) throw new Error("同一空间不能混养动物。");
+    if (group.count + amount > capacity) throw new Error("动物容量不足。");
+    return { ...group, animal, count: group.count + amount };
   }
 
   private nextRoomMaterial(material: RoomMaterial): RoomMaterial | null {

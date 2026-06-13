@@ -1,11 +1,19 @@
 import { animalCapacityRules } from "../config/animalCapacity";
 import type { AnimalKey } from "../config/baseActions";
+import type { AnimalCookInput, AnimalPlacementInput } from "../shared/types";
 import type { PlayerState } from "../state/PlayerState";
+import { FarmManager } from "./FarmManager";
 
 type AnimalCounts = Record<AnimalKey, number>;
 
 export class AnimalManager {
+  private farmManager = new FarmManager();
+
   addAnimals(player: PlayerState, animal: AnimalKey, amount: number): PlayerState {
+    if (player.farm.fences || player.farm.animalHousing) {
+      return this.addAnimalsToAvailableHousing(player, animal, amount);
+    }
+
     const nextAnimals = { ...player.animals };
     let accepted = 0;
 
@@ -29,6 +37,39 @@ export class AnimalManager {
       ...player,
       animals: nextAnimals,
     };
+  }
+
+  placeAnimals(player: PlayerState, input: AnimalPlacementInput, amount: number): PlayerState {
+    const cooked = input.cooked ?? 0;
+    const discarded = input.discarded ?? 0;
+    const placed = input.placements.reduce((sum, placement) => sum + placement.count, 0);
+    if (placed + cooked + discarded > amount) {
+      throw new Error("处理动物数量超过获得数量。");
+    }
+    let nextPlayer = this.farmManager.placeAnimals(player, input.animal, amount, input.placements);
+    if (cooked > 0) {
+      nextPlayer = this.cookAnimals(nextPlayer, [{ animal: input.animal, count: cooked }]);
+    }
+    return nextPlayer;
+  }
+
+  cookAnimals(player: PlayerState, cooked: AnimalCookInput[]): PlayerState {
+    let nextPlayer = player;
+    cooked.forEach((item) => {
+      if (item.count <= 0) return;
+      if (!this.canCookAnimal(nextPlayer)) {
+        throw new Error("没有可烹饪动物的主要发展卡。");
+      }
+      nextPlayer = this.farmManager.removeAnimals(nextPlayer, item.animal, item.count);
+      nextPlayer = {
+        ...nextPlayer,
+        resources: {
+          ...nextPlayer.resources,
+          food: nextPlayer.resources.food + item.count * this.cookValue(nextPlayer, item.animal),
+        },
+      };
+    });
+    return nextPlayer;
   }
 
   breed(player: PlayerState): PlayerState {
@@ -56,6 +97,14 @@ export class AnimalManager {
   }
 
   private capacitySlots(player: PlayerState): number[] {
+    if (player.farm.fences || player.farm.animalHousing) {
+      const farm = this.farmManager.migrateFarm(player.farm);
+      const houseSlot = farm.animalHousing.house.count > 0 ? 0 : animalCapacityRules.house;
+      const stableSlots = farm.animalHousing.stables.map((stable) => Math.max(0, animalCapacityRules.stableWithoutFence - stable.count));
+      const pastureSlots = farm.pastures.map((pasture) => Math.max(0, pasture.capacity - pasture.animalCount));
+      return [houseSlot, ...stableSlots, ...pastureSlots].filter((capacity) => capacity > 0);
+    }
+
     const houseCapacity = animalCapacityRules.house;
     const stableSlots = player.farm.cells
       .filter((cell) => cell.stable && !cell.pastureId)
@@ -69,6 +118,47 @@ export class AnimalManager {
     });
 
     return [houseCapacity, ...stableSlots, ...pastureSlots].filter((capacity) => capacity > 0);
+  }
+
+  private addAnimalsToAvailableHousing(player: PlayerState, animal: AnimalKey, amount: number): PlayerState {
+    let nextPlayer = { ...player, farm: this.farmManager.migrateFarm(player.farm) };
+    let remaining = amount;
+    const placements: AnimalPlacementInput["placements"] = [];
+
+    nextPlayer.farm.pastures.forEach((pasture) => {
+      if (remaining <= 0 || (pasture.animalType && pasture.animalType !== animal)) return;
+      const available = pasture.capacity - pasture.animalCount;
+      const count = Math.min(remaining, available);
+      if (count <= 0) return;
+      const targetCell = pasture.cells[0];
+      if (!targetCell) return;
+      placements.push({ type: "pasture", pastureId: pasture.id, row: targetCell.row, col: targetCell.col, count });
+      remaining -= count;
+    });
+
+    nextPlayer.farm.animalHousing.stables.forEach((stable) => {
+      if (remaining <= 0 || stable.count > 0) return;
+      placements.push({ type: "stable", row: stable.row, col: stable.col, count: 1 });
+      remaining -= 1;
+    });
+
+    if (remaining > 0 && nextPlayer.farm.animalHousing.house.count === 0) {
+      placements.push({ type: "house", count: 1 });
+      remaining -= 1;
+    }
+
+    return this.farmManager.placeAnimals(nextPlayer, animal, amount, placements);
+  }
+
+  private cookValue(player: PlayerState, animal: AnimalKey): number {
+    const hasHearth = player.majorImprovements.some((id) => id.startsWith("cooking-hearth"));
+    if (animal === "cattle") return hasHearth ? 4 : 3;
+    if (animal === "boar") return hasHearth ? 3 : 2;
+    return 2;
+  }
+
+  private canCookAnimal(player: PlayerState): boolean {
+    return player.majorImprovements.some((id) => id.startsWith("fireplace") || id.startsWith("cooking-hearth"));
   }
 
   private canAssignCountsToSlots(counts: number[], slots: number[]): boolean {

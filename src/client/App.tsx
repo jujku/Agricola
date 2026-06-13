@@ -1,14 +1,30 @@
-import { useEffect, useRef, useState } from "react";
-import type { RoomListItem } from "../shared/types";
-import { createRoom, joinRoom, leaveRoom, login, logout, register, startGame, submitHarvestFeeding, wireSocketToStore } from "./socket/clientSocket";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import type { AnimalCookInput, AnimalOverflowResolution, RoomListItem } from "../shared/types";
+import {
+  createRoom,
+  joinRoom,
+  leaveRoom,
+  login,
+  logout,
+  register,
+  startGame,
+  submitHarvestBreeding,
+  submitHarvestFeeding,
+  submitHarvestField,
+  wireSocketToStore,
+} from "./socket/clientSocket";
 import { useGameStore } from "./store/gameStore";
 import { Board } from "./ui/Board/Board";
 import { Cards } from "./ui/Cards/Cards";
 import { Farm } from "./ui/Farm/Farm";
 import { Resources } from "./ui/Resources/Resources";
+import { RESOURCE_ICONS } from "./ui/VisualSystem/ResourceIcons";
 import { getPlayerColor, getPlayerColorById } from "./ui/VisualSystem/playerColors";
 
 const emptyPlayers: NonNullable<ReturnType<typeof useGameStore.getState>["game"]>["players"] = [];
+type Player = (typeof emptyPlayers)[number];
+type Animal = AnimalCookInput["animal"];
+type BadgeType = "grain" | "vegetable" | "food" | "begging" | Animal;
 
 export function App() {
   const { connected, game, notice, roomId, rooms, setNotice, username } = useGameStore();
@@ -21,6 +37,9 @@ export function App() {
   const [confirmLeaveOpen, setConfirmLeaveOpen] = useState(false);
   const [grainToFood, setGrainToFood] = useState(0);
   const [vegetableToFood, setVegetableToFood] = useState(0);
+  const [feedingCookedAnimals, setFeedingCookedAnimals] = useState<AnimalCookInput[]>([]);
+  const [breedingCookedAnimals, setBreedingCookedAnimals] = useState<AnimalCookInput[]>([]);
+  const [breedingPlacements, setBreedingPlacements] = useState<AnimalOverflowResolution["placements"]>([]);
 
   useEffect(() => wireSocketToStore(), []);
   useEffect(() => {
@@ -81,10 +100,12 @@ export function App() {
   }
 
   const players = game.players ?? emptyPlayers;
-  const myPlayer = players.find((player) => player.id === username) ?? players[0];
+  const myPlayer = players.find((player) => player.id === username) ?? players[0] ?? null;
   const viewingPlayer = players.find((player) => player.id === viewingPlayerId) ?? myPlayer;
   const viewingPlayerColor = getPlayerColorById(players, viewingPlayer?.id);
-  const harvestSubmitted = Boolean(username && game.harvestFeeding?.submittedPlayerIds.includes(username));
+  const fieldSubmitted = Boolean(game.harvestField?.submittedPlayerIds.includes(username));
+  const feedingSubmitted = Boolean(game.harvestFeeding?.submittedPlayerIds.includes(username));
+  const breedingSubmitted = Boolean(game.harvestBreeding?.submittedPlayerIds.includes(username));
 
   return (
     <main className="app-shell">
@@ -100,12 +121,7 @@ export function App() {
           <span className="pill">第 {game.round} 轮</span>
           <span className="pill">{translatePhase(game.phase)}</span>
           {game.phase === "WAITING" ? <button onClick={() => roomId && startGame(roomId)}>开始游戏</button> : null}
-          <button
-            className="secondary-button"
-            onClick={() => {
-              setConfirmLeaveOpen(true);
-            }}
-          >
+          <button className="secondary-button" onClick={() => setConfirmLeaveOpen(true)}>
             退出房间
           </button>
         </div>
@@ -132,6 +148,11 @@ export function App() {
                     {player.id === username ? "（我）" : ""}
                   </span>
                   <small>
+                    {player.id === game.startingPlayer ? (
+                      <span className="starting-player-mark" title="起始玩家">
+                        <RESOURCE_ICONS.starting size={18} />
+                      </span>
+                    ) : null}
                     {player.workers.length} 工人 / {player.resources.food} 食物
                   </small>
                 </button>
@@ -159,6 +180,7 @@ export function App() {
           <Cards />
         </aside>
       </section>
+
       <NoticeOverlay message={notice ?? game.lastError} onDone={() => setNotice(null)} />
       <ConfirmOverlay
         open={confirmLeaveOpen}
@@ -171,26 +193,71 @@ export function App() {
           if (roomId) leaveRoom(roomId);
         }}
       />
-      <HarvestFeedingOverlay
-        grainToFood={grainToFood}
-        onGrainToFoodChange={setGrainToFood}
-        onSubmit={() => {
-          if (!roomId || !username) return;
-          submitHarvestFeeding(roomId, username, grainToFood, vegetableToFood);
-        }}
-        onVegetableToFoodChange={setVegetableToFood}
-        open={game.phase === "HARVEST"}
-        player={myPlayer ?? null}
+      <HarvestFieldOverlay
+        harvestedByPlayerId={game.harvestField?.harvestedByPlayerId ?? {}}
+        onSubmit={() => roomId && submitHarvestField(roomId, username)}
+        open={game.phase === "HARVEST" && Boolean(game.harvestField)}
         players={players}
+        submitted={fieldSubmitted}
+        submittedPlayerIds={game.harvestField?.submittedPlayerIds ?? []}
+        username={username}
+      />
+      <HarvestFeedingOverlay
+        cookedAnimals={feedingCookedAnimals}
+        grainToFood={grainToFood}
+        onCookedAnimalsChange={setFeedingCookedAnimals}
+        onGrainToFoodChange={setGrainToFood}
+        onSubmit={() => roomId && submitHarvestFeeding(roomId, username, grainToFood, vegetableToFood, feedingCookedAnimals)}
+        onVegetableToFoodChange={setVegetableToFood}
+        open={game.phase === "HARVEST" && Boolean(game.harvestFeeding)}
+        player={myPlayer}
+        players={players}
+        submitted={feedingSubmitted}
         submittedPlayerIds={game.harvestFeeding?.submittedPlayerIds ?? []}
-        submitted={harvestSubmitted}
         vegetableToFood={vegetableToFood}
+      />
+      <HarvestBreedingOverlay
+        birthsByPlayerId={game.harvestBreeding?.birthsByPlayerId ?? {}}
+        cookedAnimals={breedingCookedAnimals}
+        onCookedAnimalsChange={setBreedingCookedAnimals}
+        onSubmit={() => {
+          if (!roomId) return;
+          const overflow = calculatePendingBirths(game, username, true);
+          submitHarvestBreeding(roomId, username, {
+            placements: breedingPlacements,
+            cooked: breedingCookedAnimals,
+            discarded: overflow
+              .filter((item) => item.count - getCookedAnimalCount(breedingCookedAnimals, item.animal) - getPlacedAnimalCount(breedingPlacements, item.animal) > 0)
+              .map((item) => ({
+                animal: item.animal,
+                count: item.count - getCookedAnimalCount(breedingCookedAnimals, item.animal) - getPlacedAnimalCount(breedingPlacements, item.animal),
+              })),
+          });
+        }}
+        onPlacementsChange={setBreedingPlacements}
+        open={game.phase === "HARVEST" && game.stage === "HARVEST_BREEDING" && Boolean(game.harvestBreeding)}
+        pendingBirths={calculatePendingBirths(game, username, true)}
+        placements={breedingPlacements}
+        player={myPlayer}
+        players={players}
+        submitted={breedingSubmitted}
+        submittedPlayerIds={game.harvestBreeding?.submittedPlayerIds ?? []}
+        username={username}
       />
     </main>
   );
 }
 
-interface AuthPageProps {
+function AuthPage({
+  authMode,
+  connected,
+  onModeChange,
+  onPasswordChange,
+  onSubmit,
+  onUsernameChange,
+  password,
+  username,
+}: {
   authMode: "login" | "register";
   connected: boolean;
   password: string;
@@ -199,60 +266,62 @@ interface AuthPageProps {
   onPasswordChange: (password: string) => void;
   onSubmit: () => void;
   onUsernameChange: (username: string) => void;
-}
-
-function AuthPage(props: AuthPageProps) {
+}) {
   return (
     <main className="auth-shell">
       <section className="auth-card">
-        <h1>农场主</h1>
+        <h1>农场桌面</h1>
         <p className="muted">登录账号后进入游戏。</p>
         <div className="segmented">
-          <button className={props.authMode === "login" ? "active" : ""} onClick={() => props.onModeChange("login")}>
+          <button className={authMode === "login" ? "active" : ""} onClick={() => onModeChange("login")}>
             登录
           </button>
-          <button className={props.authMode === "register" ? "active" : ""} onClick={() => props.onModeChange("register")}>
+          <button className={authMode === "register" ? "active" : ""} onClick={() => onModeChange("register")}>
             注册
           </button>
         </div>
-        <input value={props.username} onChange={(event) => props.onUsernameChange(event.target.value)} placeholder="用户名" />
-        <input type="password" value={props.password} onChange={(event) => props.onPasswordChange(event.target.value)} placeholder="密码" />
-        <button onClick={props.onSubmit}>{props.authMode === "login" ? "登录" : "注册并登录"}</button>
-        <p className="muted">连接状态：{props.connected ? "已连接" : "未连接"}</p>
+        <input value={username} onChange={(event) => onUsernameChange(event.target.value)} placeholder="用户名" />
+        <input type="password" value={password} onChange={(event) => onPasswordChange(event.target.value)} placeholder="密码" />
+        <button onClick={onSubmit}>{authMode === "login" ? "登录" : "注册并登录"}</button>
+        <p className="muted">连接状态：{connected ? "已连接" : "未连接"}</p>
       </section>
     </main>
   );
 }
 
-interface MainMenuPageProps {
-  connected: boolean;
-  username: string;
-  onLogout: () => void;
-  onOpenLobby: () => void;
-}
-
-function MainMenuPage(props: MainMenuPageProps) {
+function MainMenuPage({ connected, onLogout, onOpenLobby, username }: { connected: boolean; username: string; onLogout: () => void; onOpenLobby: () => void }) {
   return (
     <main className="app-shell menu-shell">
       <header className="home-hero">
         <h1>农家乐轻量版</h1>
         <div className="account-line">
-          <p>账号：{props.username}</p>
-          <button className="secondary-button" onClick={props.onLogout}>
+          <p>账号：{username}</p>
+          <button className="secondary-button" onClick={onLogout}>
             登出账号
           </button>
         </div>
-        <span className={props.connected ? "pill ok" : "pill"}>连接：{props.connected ? "已连接" : "未连接"}</span>
+        <span className={connected ? "pill ok" : "pill"}>连接：{connected ? "已连接" : "未连接"}</span>
       </header>
       <section className="panel main-menu">
         <h2>主菜单</h2>
-        <button onClick={props.onOpenLobby}>进入游戏大厅</button>
+        <button onClick={onOpenLobby}>进入游戏大厅</button>
       </section>
     </main>
   );
 }
 
-interface LobbyPageProps {
+function LobbyPage({
+  connected,
+  manualRoomId,
+  onBackToMain,
+  onCreateRoom,
+  onJoinManualRoom,
+  onJoinRoom,
+  onLogout,
+  onManualRoomIdChange,
+  rooms,
+  username,
+}: {
   connected: boolean;
   manualRoomId: string;
   rooms: RoomListItem[];
@@ -263,49 +332,44 @@ interface LobbyPageProps {
   onManualRoomIdChange: (roomId: string) => void;
   onJoinRoom: (room: RoomListItem) => void;
   onLogout: () => void;
-}
-
-function LobbyPage(props: LobbyPageProps) {
-  const visibleRooms = props.rooms.filter((room) => /^\d+$/.test(room.roomId) && room.phase === "WAITING");
+}) {
+  const visibleRooms = rooms.filter((room) => /^\d+$/.test(room.roomId) && room.phase === "WAITING");
 
   return (
     <main className="app-shell">
       <header className="home-hero">
         <div>
           <h1>游戏大厅</h1>
-          <p>玩家：{props.username}</p>
+          <p>玩家：{username}</p>
         </div>
         <div className="status-line">
-          <span className={props.connected ? "pill ok" : "pill"}>连接：{props.connected ? "已连接" : "未连接"}</span>
-          <button className="secondary-button" onClick={props.onBackToMain}>
+          <span className={connected ? "pill ok" : "pill"}>连接：{connected ? "已连接" : "未连接"}</span>
+          <button className="secondary-button" onClick={onBackToMain}>
             返回主菜单
           </button>
-          <button className="secondary-button" onClick={props.onLogout}>
+          <button className="secondary-button" onClick={onLogout}>
             登出账号
           </button>
         </div>
       </header>
-
       <section className="panel lobby-page">
         <div className="lobby-head">
           <div>
             <h2>当前房间</h2>
             <p className="muted">只显示等待中的可加入房间。</p>
           </div>
-          <button onClick={props.onCreateRoom}>创建房间</button>
+          <button onClick={onCreateRoom}>创建房间</button>
         </div>
-
         <div className="manual-join">
-          <input value={props.manualRoomId} onChange={(event) => props.onManualRoomIdChange(event.target.value)} placeholder="输入房间编号" />
-          <button onClick={props.onJoinManualRoom}>加入房间</button>
+          <input value={manualRoomId} onChange={(event) => onManualRoomIdChange(event.target.value)} placeholder="输入房间编号" />
+          <button onClick={onJoinManualRoom}>加入房间</button>
         </div>
-
         <div className="room-list">
           {visibleRooms.length === 0 ? (
             <p className="muted">当前没有可加入房间。</p>
           ) : (
             visibleRooms.map((room) => (
-              <button key={room.roomId} className="room-card" onClick={() => props.onJoinRoom(room)}>
+              <button key={room.roomId} className="room-card" onClick={() => onJoinRoom(room)}>
                 <span className="room-number">#{room.roomId}</span>
                 <span>{translatePhase(room.phase)}</span>
                 <small>
@@ -321,20 +385,6 @@ function LobbyPage(props: LobbyPageProps) {
   );
 }
 
-function translatePhase(phase: string): string {
-  const phases: Record<string, string> = {
-    WAITING: "等待玩家",
-    SETUP: "初始化",
-    ROUND_PREPARE: "回合准备",
-    WORK_PHASE: "工作阶段",
-    RETURN_HOME: "工人回家",
-    HARVEST: "收获阶段",
-    NEXT_ROUND: "下一轮",
-    GAME_END: "游戏结束",
-  };
-  return phases[phase] ?? phase;
-}
-
 function NoticeOverlay({ message, onDone }: { message: string | null | undefined; onDone?: () => void }) {
   const [displayMessage, setDisplayMessage] = useState<string | null>(null);
   const onDoneRef = useRef(onDone);
@@ -346,11 +396,7 @@ function NoticeOverlay({ message, onDone }: { message: string | null | undefined
 
   useEffect(() => {
     if (!message) return;
-
-    if (timerRef.current) {
-      window.clearTimeout(timerRef.current);
-    }
-
+    if (timerRef.current) window.clearTimeout(timerRef.current);
     setDisplayMessage(message);
     timerRef.current = window.setTimeout(() => {
       setDisplayMessage(null);
@@ -361,17 +407,12 @@ function NoticeOverlay({ message, onDone }: { message: string | null | undefined
 
   useEffect(
     () => () => {
-      if (timerRef.current) {
-        window.clearTimeout(timerRef.current);
-      }
+      if (timerRef.current) window.clearTimeout(timerRef.current);
     },
     [],
   );
 
-  if (!displayMessage) {
-    return null;
-  }
-
+  if (!displayMessage) return null;
   return (
     <div className="modal-layer modal-layer--notice" role="status" aria-live="polite">
       <section className="game-modal game-modal--notice">
@@ -395,10 +436,7 @@ function ConfirmOverlay({
   open: boolean;
   title: string;
 }) {
-  if (!open) {
-    return null;
-  }
-
+  if (!open) return null;
   return (
     <div className="modal-layer" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
       <section className="game-modal">
@@ -409,15 +447,53 @@ function ConfirmOverlay({
           <button className="secondary-button" onClick={onCancel}>
             取消
           </button>
-          <button onClick={onConfirm}>确认退出</button>
+          <button onClick={onConfirm}>确认</button>
         </footer>
       </section>
     </div>
   );
 }
 
+function HarvestFieldOverlay({
+  harvestedByPlayerId,
+  onSubmit,
+  open,
+  players,
+  submitted,
+  submittedPlayerIds,
+  username,
+}: {
+  harvestedByPlayerId: Record<string, { grain: number; vegetable: number }>;
+  onSubmit: () => void;
+  open: boolean;
+  players: Player[];
+  submitted: boolean;
+  submittedPlayerIds: string[];
+  username: string;
+}) {
+  if (!open) return null;
+  const mine = harvestedByPlayerId[username] ?? { grain: 0, vegetable: 0 };
+  return (
+    <div className="modal-layer" role="dialog" aria-modal="true" aria-labelledby="harvest-field-title">
+      <section className="game-modal harvest-modal">
+        <span className="game-modal__eyebrow">收获阶段 1/3</span>
+        <h2 id="harvest-field-title">收获田地</h2>
+        <p>每块已播种田地收获 1 个作物到资源区。</p>
+        <div className="harvest-summary">
+          <ResourceBadge type="grain" label="本次小麦" count={mine.grain} />
+          <ResourceBadge type="vegetable" label="本次蔬菜" count={mine.vegetable} />
+        </div>
+        <HarvestProgress players={players} submittedPlayerIds={submittedPlayerIds} />
+        {submitted ? <strong className="harvest-waiting">已确认，等待其他玩家。</strong> : <button onClick={onSubmit}>确认收获</button>}
+      </section>
+    </div>
+  );
+}
+
 function HarvestFeedingOverlay({
+  cookedAnimals,
   grainToFood,
+  onCookedAnimalsChange,
   onGrainToFoodChange,
   onSubmit,
   onVegetableToFoodChange,
@@ -428,13 +504,15 @@ function HarvestFeedingOverlay({
   submittedPlayerIds,
   vegetableToFood,
 }: {
+  cookedAnimals: AnimalCookInput[];
   grainToFood: number;
+  onCookedAnimalsChange: (value: AnimalCookInput[]) => void;
   onGrainToFoodChange: (value: number) => void;
   onSubmit: () => void;
   onVegetableToFoodChange: (value: number) => void;
   open: boolean;
-  player: (typeof emptyPlayers)[number] | null;
-  players: typeof emptyPlayers;
+  player: Player | null;
+  players: Player[];
   submitted: boolean;
   submittedPlayerIds: string[];
   vegetableToFood: number;
@@ -445,13 +523,12 @@ function HarvestFeedingOverlay({
     onVegetableToFoodChange(clampNumber(vegetableToFood, 0, player.resources.vegetable));
   }, [open, player?.id, player?.resources.grain, player?.resources.vegetable, submitted]);
 
-  if (!open || !player) {
-    return null;
-  }
+  if (!open || !player) return null;
 
   const normalizedGrain = clampNumber(grainToFood, 0, player.resources.grain);
   const normalizedVegetable = clampNumber(vegetableToFood, 0, player.resources.vegetable);
-  const foodAfterConversion = player.resources.food + normalizedGrain + normalizedVegetable;
+  const cookedFood = cookedAnimals.reduce((sum, item) => sum + item.count * cookValue(player, item.animal), 0);
+  const foodAfterConversion = player.resources.food + normalizedGrain + normalizedVegetable + cookedFood;
   const requiredFood = player.workers.length * 2;
   const beggingCards = Math.max(0, requiredFood - foodAfterConversion);
   const paidFood = Math.min(foodAfterConversion, requiredFood);
@@ -459,72 +536,195 @@ function HarvestFeedingOverlay({
   return (
     <div className="modal-layer" role="dialog" aria-modal="true" aria-labelledby="harvest-feeding-title">
       <section className="game-modal harvest-modal">
-        <span className="game-modal__eyebrow">收获阶段</span>
+        <span className="game-modal__eyebrow">收获阶段 2/3</span>
         <h2 id="harvest-feeding-title">家庭喂食</h2>
-        <p>选择是否把资源区的谷物和蔬菜转化为食物。</p>
-
+        <p>选择是否把资源区的谷物、蔬菜或动物转换为食物。</p>
         <div className="harvest-controls">
-          <HarvestConvertControl
-            label="谷物转食物"
-            max={player.resources.grain}
-            onChange={onGrainToFoodChange}
-            value={normalizedGrain}
-            disabled={submitted}
-          />
-          <HarvestConvertControl
-            label="蔬菜转食物"
-            max={player.resources.vegetable}
-            onChange={onVegetableToFoodChange}
-            value={normalizedVegetable}
-            disabled={submitted}
-          />
+          <HarvestConvertControl icon={<RESOURCE_ICONS.grain size={24} />} label="谷物转食物" max={player.resources.grain} onChange={onGrainToFoodChange} value={normalizedGrain} disabled={submitted} />
+          <HarvestConvertControl icon={<RESOURCE_ICONS.vegetable size={24} />} label="蔬菜转食物" max={player.resources.vegetable} onChange={onVegetableToFoodChange} value={normalizedVegetable} disabled={submitted} />
         </div>
-
+        <AnimalCookPanel cookedAnimals={cookedAnimals} disabled={submitted || !canCookAnimal(player)} onChange={onCookedAnimalsChange} player={player} />
         <div className="harvest-summary">
-          <span>当前食物 {player.resources.food}</span>
-          <span>转换后 {foodAfterConversion}</span>
-          <span>需要 {requiredFood}</span>
-          <span>将消耗 {paidFood}</span>
-          <strong>预计乞讨卡 {beggingCards}</strong>
+          <ResourceBadge type="food" label="当前" count={player.resources.food} />
+          <ResourceBadge type="food" label="转换后" count={foodAfterConversion} />
+          <ResourceBadge type="food" label="烹饪" count={cookedFood} />
+          <ResourceBadge type="food" label="需要" count={requiredFood} />
+          <ResourceBadge type="food" label="将消耗" count={paidFood} />
+          <ResourceBadge type="begging" label="预计乞讨" count={beggingCards} strong />
         </div>
-
-        <div className="harvest-progress">
-          {players.map((candidate, index) => (
-            <span
-              key={candidate.id}
-              className={submittedPlayerIds.includes(candidate.id) ? "harvest-progress__player done" : "harvest-progress__player"}
-              style={{ ["--player-color" as string]: getPlayerColor(index) }}
-            >
-              {candidate.name}
-            </span>
-          ))}
-        </div>
-
-        {submitted ? (
-          <strong className="harvest-waiting">已确认，等待其他玩家。</strong>
-        ) : (
-          <button onClick={onSubmit}>确认喂食</button>
-        )}
+        <HarvestProgress players={players} submittedPlayerIds={submittedPlayerIds} />
+        {submitted ? <strong className="harvest-waiting">已确认，等待其他玩家。</strong> : <button onClick={onSubmit}>确认喂食</button>}
       </section>
+    </div>
+  );
+}
+
+function HarvestBreedingOverlay({
+  birthsByPlayerId,
+  cookedAnimals,
+  onCookedAnimalsChange,
+  onPlacementsChange,
+  onSubmit,
+  open,
+  pendingBirths,
+  placements,
+  player,
+  players,
+  submitted,
+  submittedPlayerIds,
+  username,
+}: {
+  birthsByPlayerId: Record<string, Partial<Record<Animal, number>>>;
+  cookedAnimals: AnimalCookInput[];
+  onCookedAnimalsChange: (value: AnimalCookInput[]) => void;
+  onPlacementsChange: (value: AnimalOverflowResolution["placements"]) => void;
+  onSubmit: () => void;
+  open: boolean;
+  pendingBirths: AnimalCookInput[];
+  placements: AnimalOverflowResolution["placements"];
+  player: Player | null;
+  players: Player[];
+  submitted: boolean;
+  submittedPlayerIds: string[];
+  username: string;
+}) {
+  if (!open || !player) return null;
+  const myBirths = formatAnimalCounts(birthsByPlayerId[username] ?? {});
+  const hasOverflow = pendingBirths.length > 0;
+
+  return (
+    <div className="modal-layer" role="dialog" aria-modal="true" aria-labelledby="harvest-breeding-title">
+      <section className="game-modal harvest-modal">
+        <span className="game-modal__eyebrow">收获阶段 3/3</span>
+        <h2 id="harvest-breeding-title">动物繁殖</h2>
+        <p>{hasOverflow ? "有新生动物暂时没有空间，请选择烹饪或丢弃，之后再确认。" : "查看本轮繁殖结果，然后确认进入下一步。"}</p>
+        <div className="harvest-summary">
+          {myBirths.length > 0 ? myBirths.map((item) => <ResourceBadge key={item.animal} type={item.animal} label="繁殖" count={item.count} />) : <span>本轮没有新增动物</span>}
+        </div>
+        {hasOverflow ? (
+          <>
+            <div className="harvest-summary harvest-summary--warning">
+              {pendingBirths.map((item) => (
+                <ResourceBadge key={item.animal} type={item.animal} label="待处理" count={item.count} />
+              ))}
+            </div>
+            <BreedingPlacementPicker onChange={onPlacementsChange} pendingBirths={pendingBirths} placements={placements} player={player} />
+            <AnimalCookPanel cookedAnimals={cookedAnimals} disabled={!canCookAnimal(player)} maxByAnimal={pendingBirths} onChange={onCookedAnimalsChange} player={player} />
+            <p className="muted">未烹饪的新生动物会在确认时丢弃。</p>
+          </>
+        ) : null}
+        <HarvestProgress players={players} submittedPlayerIds={submittedPlayerIds} />
+        {submitted ? <strong className="harvest-waiting">已确认，等待其他玩家。</strong> : <button onClick={onSubmit}>确认繁殖</button>}
+      </section>
+    </div>
+  );
+}
+
+function AnimalCookPanel({
+  cookedAnimals,
+  disabled,
+  maxByAnimal,
+  onChange,
+  player,
+}: {
+  cookedAnimals: AnimalCookInput[];
+  disabled: boolean;
+  maxByAnimal?: AnimalCookInput[];
+  onChange: (value: AnimalCookInput[]) => void;
+  player: Player;
+}) {
+  const [open, setOpen] = useState(false);
+  const cookedTotal = cookedAnimals.reduce((sum, item) => sum + item.count, 0);
+  const canCook = canCookAnimal(player);
+  return (
+    <div className="harvest-cook-panel">
+      <button className="secondary-button" disabled={disabled} onClick={() => setOpen((value) => !value)}>
+        烹饪动物{cookedTotal > 0 ? ` x ${cookedTotal}` : ""}
+      </button>
+      {!canCook ? <small className="muted">需要壁炉或灶台</small> : null}
+      {open && !disabled ? (
+        <div className="harvest-controls">
+          {(["sheep", "boar", "cattle"] as const).map((animal) => {
+            const max = maxByAnimal?.find((item) => item.animal === animal)?.count ?? player.animals[animal];
+            const value = getCookedAnimalCount(cookedAnimals, animal);
+            return (
+              <HarvestConvertControl
+                key={animal}
+                disabled={max <= 0}
+                icon={<AnimalIcon animal={animal} size={24} />}
+                label={`${translateAnimalName(animal)}烹饪`}
+                max={max}
+                value={value}
+                onChange={(nextValue) => onChange(setCookedAnimalCount(cookedAnimals, animal, nextValue))}
+              />
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function BreedingPlacementPicker({
+  onChange,
+  pendingBirths,
+  placements,
+  player,
+}: {
+  onChange: (value: AnimalOverflowResolution["placements"]) => void;
+  pendingBirths: AnimalCookInput[];
+  placements: AnimalOverflowResolution["placements"];
+  player: Player;
+}) {
+  const targets = pendingBirths.flatMap((birth) => getBreedingTargets(player, birth.animal));
+  if (targets.length === 0) {
+    return <p className="muted">没有其他可安置空间。</p>;
+  }
+
+  return (
+    <div className="breeding-placement-list">
+      {targets.map((target) => {
+        const key = placementKey(target.placement);
+        const selected = placements.some((item) => placementKey(item) === key);
+        const pending = pendingBirths.find((item) => item.animal === target.animal)?.count ?? 0;
+        const placedForAnimal = getPlacedAnimalCount(placements, target.animal);
+        const disabled = !selected && placedForAnimal >= pending;
+        return (
+          <button
+            key={key}
+            className={selected ? "secondary-button active" : "secondary-button"}
+            disabled={disabled}
+            onClick={() => {
+              onChange(selected ? placements.filter((item) => placementKey(item) !== key) : [...placements, target.placement]);
+            }}
+          >
+            <AnimalIcon animal={target.animal} size={22} />
+            {target.label}
+          </button>
+        );
+      })}
     </div>
   );
 }
 
 function HarvestConvertControl({
   disabled,
+  icon,
   label,
   max,
   onChange,
   value,
 }: {
   disabled: boolean;
+  icon?: ReactNode;
   label: string;
   max: number;
   onChange: (value: number) => void;
   value: number;
 }) {
   return (
-    <label className="harvest-control">
+    <label className="harvest-control harvest-control--with-icon">
+      {icon}
       <span>
         {label}
         <small>最多 {max}</small>
@@ -534,7 +734,133 @@ function HarvestConvertControl({
   );
 }
 
+function HarvestProgress({ players, submittedPlayerIds }: { players: Player[]; submittedPlayerIds: string[] }) {
+  return (
+    <div className="harvest-progress">
+      {players.map((candidate, index) => (
+        <span key={candidate.id} className={submittedPlayerIds.includes(candidate.id) ? "harvest-progress__player done" : "harvest-progress__player"} style={{ ["--player-color" as string]: getPlayerColor(index) }}>
+          {candidate.name}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function ResourceBadge({ count, label, strong, type }: { count: number; label: string; strong?: boolean; type: BadgeType }) {
+  const content = (
+    <>
+      <BadgeIcon type={type} />
+      <span>{label}</span>
+      <b>{count}</b>
+    </>
+  );
+  return strong ? <strong className="harvest-resource-badge">{content}</strong> : <span className="harvest-resource-badge">{content}</span>;
+}
+
+function BadgeIcon({ type }: { type: BadgeType }) {
+  if (type === "sheep" || type === "boar" || type === "cattle") return <AnimalIcon animal={type} size={22} />;
+  const Icon = RESOURCE_ICONS[type];
+  return <Icon size={22} />;
+}
+
+function AnimalIcon({ animal, size }: { animal: Animal; size: number }) {
+  const Icon = RESOURCE_ICONS[animal];
+  return <Icon size={size} />;
+}
+
 function clampNumber(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) return min;
   return Math.min(max, Math.max(min, Math.floor(value)));
+}
+
+function getCookedAnimalCount(cookedAnimals: AnimalCookInput[], animal: Animal): number {
+  return cookedAnimals.find((item) => item.animal === animal)?.count ?? 0;
+}
+
+function setCookedAnimalCount(cookedAnimals: AnimalCookInput[], animal: Animal, count: number): AnimalCookInput[] {
+  const next = cookedAnimals.filter((item) => item.animal !== animal);
+  if (count > 0) next.push({ animal, count });
+  return next;
+}
+
+function getPlacedAnimalCount(placements: AnimalOverflowResolution["placements"], animal: Animal): number {
+  return placements.reduce((sum, placement) => sum + ("animal" in placement && placement.animal === animal ? placement.count : 0), 0);
+}
+
+function placementKey(placement: AnimalOverflowResolution["placements"][number]): string {
+  if (placement.type === "house") return `house:${"animal" in placement ? placement.animal ?? "animal" : "animal"}`;
+  if (placement.type === "stable") return `stable:${placement.row}:${placement.col}:${placement.animal ?? "animal"}`;
+  return `pasture:${placement.pastureId}:${placement.row}:${placement.col}:${placement.animal ?? "animal"}`;
+}
+
+function getBreedingTargets(player: Player, animal: Animal): Array<{ animal: Animal; label: string; placement: AnimalOverflowResolution["placements"][number] }> {
+  const targets: Array<{ animal: Animal; label: string; placement: AnimalOverflowResolution["placements"][number] }> = [];
+  if (player.farm.animalHousing.house.count === 0) {
+    targets.push({ animal, label: `${translateAnimalName(animal)} 放入房屋`, placement: { type: "house", count: 1 } });
+  }
+  player.farm.animalHousing.stables.forEach((stable) => {
+    if (stable.count === 0 || stable.animal === animal) {
+      const cell = player.farm.cells.find((item) => item.row === stable.row && item.col === stable.col);
+      if (!cell?.pastureId && stable.count < 1) {
+        targets.push({
+          animal,
+          label: `${translateAnimalName(animal)} 放入马厩 ${stable.col},${stable.row}`,
+          placement: { type: "stable", row: stable.row, col: stable.col, count: 1, animal },
+        });
+      }
+    }
+  });
+  player.farm.pastures.forEach((pasture) => {
+    if ((pasture.animalType && pasture.animalType !== animal) || pasture.animalCount >= pasture.capacity) return;
+    pasture.cells.forEach((cell) => {
+      targets.push({
+        animal,
+        label: `${translateAnimalName(animal)} 放入牧场 ${cell.col},${cell.row}`,
+        placement: { type: "pasture", pastureId: pasture.id, row: cell.row, col: cell.col, count: 1, animal },
+      });
+    });
+  });
+  return targets;
+}
+
+function canCookAnimal(player: Player): boolean {
+  return player.majorImprovements.some((id) => id.startsWith("fireplace") || id.startsWith("cooking-hearth"));
+}
+
+function cookValue(player: Player, animal: Animal): number {
+  const hasHearth = player.majorImprovements.some((id) => id.startsWith("cooking-hearth"));
+  if (animal === "cattle") return hasHearth ? 4 : 3;
+  if (animal === "boar") return hasHearth ? 3 : 2;
+  return 2;
+}
+
+function translateAnimalName(animal: Animal): string {
+  if (animal === "boar") return "野猪";
+  if (animal === "cattle") return "牛";
+  return "羊";
+}
+
+function formatAnimalCounts(counts: Partial<Record<Animal, number>>): AnimalCookInput[] {
+  return (["sheep", "boar", "cattle"] as const)
+    .map((animal) => ({ animal, count: counts[animal] ?? 0 }))
+    .filter((item) => item.count > 0);
+}
+
+function calculatePendingBirths(game: NonNullable<ReturnType<typeof useGameStore.getState>["game"]>, playerId: string, overflowOnly = false): AnimalCookInput[] {
+  const source = overflowOnly ? game.harvestBreeding?.overflowByPlayerId[playerId] ?? {} : game.harvestBreeding?.birthsByPlayerId[playerId] ?? {};
+  return formatAnimalCounts(source);
+}
+
+function translatePhase(phase: string): string {
+  const phases: Record<string, string> = {
+    WAITING: "等待玩家",
+    SETUP: "初始化",
+    ROUND_PREPARE: "回合准备",
+    WORK_PHASE: "工作阶段",
+    RETURN_HOME: "工人回家",
+    HARVEST: "收获阶段",
+    NEXT_ROUND: "下一轮",
+    GAME_END: "游戏结束",
+  };
+  return phases[phase] ?? phase;
 }

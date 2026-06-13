@@ -80,11 +80,18 @@ export class ActionResolver {
 
     switch (effect.type) {
       case "takeAccumulated":
-        return this.takeAccumulated(state, playerId, actionSpaceId);
+        return this.takeAccumulated(state, playerId, actionSpaceId, input);
       case "gainResource":
         return this.updatePlayer(state, playerId, (player) => this.gainResource(player, effect.resource, effect.amount));
       case "gainAnimal":
-        return this.updatePlayer(state, playerId, (player) => this.animalManager.addAnimals(player, input.animalChoice ?? effect.animal, effect.amount));
+        if (input.animalChoice && input.animalChoice !== effect.animal) {
+          return state;
+        }
+        return this.updatePlayer(state, playerId, (player) =>
+          input.animalPlacement
+            ? this.animalManager.placeAnimals(player, input.animalPlacement, effect.amount)
+            : this.animalManager.addAnimals(player, input.animalChoice ?? effect.animal, effect.amount),
+        );
       case "plowField":
         return input.fieldCell ? this.updatePlayer(state, playerId, (player) => this.farmManager.plowField(player, input.fieldCell!)) : state;
       case "buildRooms":
@@ -92,7 +99,13 @@ export class ActionResolver {
       case "buildStables":
         return this.updatePlayer(state, playerId, (player) => this.farmManager.buildStables(player, input.stableCells ?? [], effect.max, effect.woodCost));
       case "buildFences":
-        return this.updatePlayer(state, playerId, (player) => this.farmManager.buildFences(player, input.pastureCells ?? []));
+        return this.updatePlayer(state, playerId, (player) =>
+          input.fenceSegments
+            ? this.farmManager.buildFencesBySegments(player, input.fenceSegments)
+            : input.fenceEdges
+              ? this.farmManager.buildFencesByEdges(player, input.fenceEdges)
+              : this.farmManager.buildFences(player, input.pastureCells ?? []),
+        );
       case "sow":
         return this.applySow(state, playerId, input);
       case "bakeBread":
@@ -111,7 +124,7 @@ export class ActionResolver {
       case "familyGrowth":
         return this.updatePlayer(state, playerId, (player) => this.growFamily(player, state.round, effect.requiresRoom, effect.minimumRound));
       case "gainMissingAnimal":
-        return this.updatePlayer(state, playerId, (player) => this.gainMissingAnimal(player, input.animalChoice));
+        return this.updatePlayer(state, playerId, (player) => this.gainMissingAnimal(player, input));
       case "buildingSupplies":
         return this.updatePlayer(state, playerId, (player) => this.applyBuildingSupplies(player, input));
       case "farmingSupplies":
@@ -127,7 +140,7 @@ export class ActionResolver {
     return effectsToApply.reduce((currentState, effect) => this.applyEffect(currentState, playerId, actionSpaceId, effect, input), state);
   }
 
-  private takeAccumulated(state: GameState, playerId: string, actionSpaceId: string): GameState {
+  private takeAccumulated(state: GameState, playerId: string, actionSpaceId: string, input: ActionInput): GameState {
     const actionSpace = state.actionSpaces.find((space) => space.id === actionSpaceId);
     if (!actionSpace) {
       return state;
@@ -139,7 +152,11 @@ export class ActionResolver {
         nextState = this.updatePlayer(nextState, playerId, (player) => this.gainResource(player, key, amount));
       }
       if (this.isAnimalKey(key)) {
-        nextState = this.updatePlayer(nextState, playerId, (player) => this.animalManager.addAnimals(player, key, amount));
+        nextState = this.updatePlayer(nextState, playerId, (player) =>
+          input.animalPlacement && input.animalPlacement.animal === key
+            ? this.animalManager.placeAnimals(player, input.animalPlacement, amount)
+            : this.animalManager.addAnimals(player, key, amount),
+        );
       }
     });
 
@@ -217,7 +234,8 @@ export class ActionResolver {
     };
   }
 
-  private gainMissingAnimal(player: PlayerState, animalChoice?: AnimalKey): PlayerState {
+  private gainMissingAnimal(player: PlayerState, input: ActionInput): PlayerState {
+    const animalChoice = input.animalChoice;
     const chosenAnimal = animalChoice ?? (["sheep", "boar", "cattle"] as AnimalKey[]).find((animal) => player.animals[animal] === 0);
     if (!chosenAnimal) {
       return player;
@@ -225,7 +243,7 @@ export class ActionResolver {
     if (player.animals[chosenAnimal] > 0) {
       throw new Error("只能增加一只没有的动物。");
     }
-    return this.animalManager.addAnimals(player, chosenAnimal, 1);
+    return input.animalPlacement ? this.animalManager.placeAnimals(player, input.animalPlacement, 1) : this.animalManager.addAnimals(player, chosenAnimal, 1);
   }
 
   private gainResource(player: PlayerState, resource: ResourceKey, amount: number): PlayerState {

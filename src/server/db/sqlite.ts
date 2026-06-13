@@ -4,6 +4,11 @@ import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import type { RoomSnapshot } from "../../shared/types";
 
+export interface StoredRoomSnapshot {
+  snapshot: RoomSnapshot;
+  updatedAt: string;
+}
+
 const databasePath = resolve(process.cwd(), "data", "agricola-lite.sqlite");
 
 let database: DatabaseSync | null = null;
@@ -32,6 +37,7 @@ export function getDatabase(): DatabaseSync {
 }
 
 export function saveRoomSnapshot(snapshot: RoomSnapshot): void {
+  const updatedAt = new Date().toISOString();
   getDatabase()
     .prepare(
       `
@@ -42,7 +48,7 @@ export function saveRoomSnapshot(snapshot: RoomSnapshot): void {
           updated_at = excluded.updated_at
       `,
     )
-    .run(snapshot.roomId, JSON.stringify(snapshot), new Date().toISOString());
+    .run(snapshot.roomId, JSON.stringify(snapshot), updatedAt);
 }
 
 export function deleteRoomSnapshot(roomId: string): void {
@@ -50,8 +56,15 @@ export function deleteRoomSnapshot(roomId: string): void {
 }
 
 export function loadRoomSnapshots(): RoomSnapshot[] {
-  const rows = getDatabase().prepare("SELECT snapshot FROM rooms").all() as Array<{ snapshot: string }>;
-  return rows.map((row) => JSON.parse(row.snapshot) as RoomSnapshot);
+  return loadStoredRoomSnapshots().map((record) => record.snapshot);
+}
+
+export function loadStoredRoomSnapshots(): StoredRoomSnapshot[] {
+  const rows = getDatabase().prepare("SELECT snapshot, updated_at FROM rooms").all() as Array<{ snapshot: string; updated_at: string }>;
+  return rows.map((row) => ({
+    snapshot: JSON.parse(row.snapshot) as RoomSnapshot,
+    updatedAt: row.updated_at,
+  }));
 }
 
 export function registerUser(username: string, password: string): { ok: true } | { ok: false; message: string } {

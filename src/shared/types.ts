@@ -1,4 +1,5 @@
 import type { GameState } from "../state/GameState";
+import type { FarmAnimalType, FenceEdge, FenceSegment } from "../state/FarmState";
 
 export interface RoomSnapshot {
   roomId: string;
@@ -55,11 +56,23 @@ export interface CardActionPayload {
   input?: ActionInput;
 }
 
+export interface SubmitHarvestFieldPayload {
+  roomId: string;
+  playerId: string;
+}
+
 export interface SubmitHarvestFeedingPayload {
   roomId: string;
   playerId: string;
   grainToFood: number;
   vegetableToFood: number;
+  cookedAnimals?: AnimalCookInput[];
+}
+
+export interface SubmitHarvestBreedingPayload {
+  roomId: string;
+  playerId: string;
+  resolution: AnimalOverflowResolution;
 }
 
 export interface ActionNotice {
@@ -86,12 +99,37 @@ export interface SowInput {
   cells: CellPosition[];
 }
 
+export interface AnimalPlacementInput {
+  animal: FarmAnimalType;
+  placements: Array<
+    | { type: "house"; count: number }
+    | { type: "stable"; row: number; col: number; count: number; animal?: FarmAnimalType }
+    | { type: "pasture"; pastureId: string; row: number; col: number; count: number; animal?: FarmAnimalType }
+  >;
+  cooked?: number;
+  discarded?: number;
+}
+
+export interface AnimalCookInput {
+  animal: FarmAnimalType;
+  count: number;
+}
+
+export interface AnimalOverflowResolution {
+  placements: AnimalPlacementInput["placements"];
+  cooked: AnimalCookInput[];
+  discarded: Array<{ animal: FarmAnimalType; count: number }>;
+}
+
 export interface ActionInput {
   selectedEffectTypes?: string[];
   fieldCell?: CellPosition;
   roomCells?: CellPosition[];
   stableCells?: CellPosition[];
   pastureCells?: CellPosition[];
+  fenceEdges?: FenceEdge[];
+  fenceSegments?: FenceSegment[];
+  overflowAnimalResolution?: AnimalOverflowResolution;
   sow?: SowInput[];
   majorImprovementId?: string;
   upgradeFromId?: string;
@@ -105,6 +143,7 @@ export interface ActionInput {
     amount: number;
   }>;
   animalChoice?: "sheep" | "boar" | "cattle";
+  animalPlacement?: AnimalPlacementInput;
   resourceChoices?: {
     first?: "reed" | "stone";
     second?: "wood" | "clay";

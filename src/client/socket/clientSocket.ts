@@ -1,12 +1,12 @@
 import { io } from "socket.io-client";
 import { SocketEvents } from "../../shared/socketEvents";
-import type { ActionInput, ActionNotice, AuthSuccessPayload, RoomLeftPayload, RoomListItem, RoomSnapshot } from "../../shared/types";
+import type { ActionInput, ActionNotice, AnimalCookInput, AnimalOverflowResolution, AuthSuccessPayload, RoomLeftPayload, RoomListItem, RoomSnapshot } from "../../shared/types";
 import { useGameStore } from "../store/gameStore";
 
 const tokenStorageKey = "agricola-lite-token";
 const socketUrl =
   import.meta.env?.VITE_SOCKET_URL ??
-  (typeof window !== "undefined" ? window.location.origin : "http://localhost:3000");
+  (typeof window !== "undefined" && window.location.port !== "5173" ? window.location.origin : "http://localhost:3000");
 const socket = io(socketUrl, {
   autoConnect: true,
 });
@@ -118,12 +118,28 @@ export function placeWorker(roomId: string, playerId: string, workerId: string, 
   });
 }
 
-export function submitHarvestFeeding(roomId: string, playerId: string, grainToFood: number, vegetableToFood: number): void {
+export function submitHarvestFeeding(roomId: string, playerId: string, grainToFood: number, vegetableToFood: number, cookedAnimals: AnimalCookInput[] = []): void {
   socket.emit(SocketEvents.SUBMIT_HARVEST_FEEDING, {
     roomId,
     playerId,
     grainToFood,
     vegetableToFood,
+    cookedAnimals,
+  });
+}
+
+export function submitHarvestField(roomId: string, playerId: string): void {
+  socket.emit(SocketEvents.SUBMIT_HARVEST_FIELD, {
+    roomId,
+    playerId,
+  });
+}
+
+export function submitHarvestBreeding(roomId: string, playerId: string, resolution: AnimalOverflowResolution): void {
+  socket.emit(SocketEvents.SUBMIT_HARVEST_BREEDING, {
+    roomId,
+    playerId,
+    resolution,
   });
 }
 
