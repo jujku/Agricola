@@ -47,6 +47,7 @@ export function Farm({ player, isOwnFarm, playerColor = "#C84040" }: FarmProps) 
                   return <FarmTile key={`${row}-${col}`} cell={cell} player={player} row={row} col={col} playerColor={playerColor} workersAtHome={workersAtHome} />;
                 }),
               )}
+              <FenceStickLayer player={player} playerColor={playerColor} />
             </div>
           </div>
 
@@ -83,7 +84,6 @@ function FarmTile({
   return (
     <div className={`farm-tile farm-tile--${state}`} style={{ ["--player-color" as string]: playerColor }} aria-label={`farm[${col}][${row}] ${state}`}>
       <TileContent cell={cell} player={player} playerColor={playerColor} state={state} showWorker={showWorker} />
-      <FenceLines player={player} row={row} col={col} />
       <small>
         {col},{row}
       </small>
@@ -166,14 +166,20 @@ function TileContent({ cell, player, playerColor, state, showWorker }: { cell?: 
   );
 }
 
-function FenceLines({ player, row, col }: { player: PlayerState; row: number; col: number }) {
-  const edges = ["top", "right", "bottom", "left"] as const;
+function FenceStickLayer({ player, playerColor }: { player: PlayerState; playerColor: string }) {
   return (
-    <>
-      {edges.map((edge) =>
-        hasFence(player, row, col, edge) ? <span key={edge} className={`farm-tile__fence farm-tile__fence--${edge}`} aria-hidden="true" /> : null,
-      )}
-    </>
+    <div className="farm-fence-layer" aria-hidden="true">
+      {(player.farm.fenceSegments ?? []).map((segment) => (
+        <span
+          key={`${segment.orientation}:${segment.row}:${segment.col}`}
+          className={`farm-fence-stick farm-fence-stick--${segment.orientation}`}
+          style={{
+            ["--player-color" as string]: playerColor,
+            ...segmentStyle(segment.orientation, segment.row, segment.col, player.farm.rows, player.farm.cols, "--farm-cell-size", "--farm-gap"),
+          }}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -201,16 +207,21 @@ function translateRoom(material: FarmCellView["roomMaterial"]): string {
   return "木屋";
 }
 
-function hasFence(player: PlayerState, row: number, col: number, edge: "top" | "right" | "bottom" | "left"): boolean {
-  const segment =
-    edge === "left"
-      ? { orientation: "vertical", row, col }
-      : edge === "right"
-        ? { orientation: "vertical", row, col: col + 1 }
-        : edge === "top"
-          ? { orientation: "horizontal", row, col }
-          : { orientation: "horizontal", row: row + 1, col };
-  return (player.farm.fenceSegments ?? []).some(
-    (candidate) => candidate.orientation === segment.orientation && candidate.row === segment.row && candidate.col === segment.col,
-  );
+function segmentStyle(orientation: "horizontal" | "vertical", row: number, col: number, rows: number, cols: number, cellVar: string, gapVar: string) {
+  if (orientation === "vertical") {
+    return {
+      left: boundaryOffset(col, cols, cellVar, gapVar),
+      top: `calc(${row} * (var(${cellVar}) + var(${gapVar})) + (var(${cellVar}) / 2))`,
+    };
+  }
+  return {
+    left: `calc(${col} * (var(${cellVar}) + var(${gapVar})) + (var(${cellVar}) / 2))`,
+    top: boundaryOffset(row, rows, cellVar, gapVar),
+  };
+}
+
+function boundaryOffset(index: number, count: number, cellVar: string, gapVar: string): string {
+  if (index <= 0) return "0px";
+  if (index >= count) return `calc(${count} * var(${cellVar}) + ${count - 1} * var(${gapVar}))`;
+  return `calc(${index} * var(${cellVar}) + ${index - 0.5} * var(${gapVar}))`;
 }

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import type { ActionInput, AnimalPlacementInput } from "../../../shared/types";
 import type { ActionSpaceState } from "../../../state/ActionSpaceState";
-import type { FarmAnimalType, FenceEdgeSide, FenceSegment } from "../../../state/FarmState";
+import type { FarmAnimalType, FenceSegment } from "../../../state/FarmState";
 import type { PlayerState } from "../../../state/PlayerState";
 import { placeWorker } from "../../socket/clientSocket";
 import { useGameStore } from "../../store/gameStore";
@@ -337,34 +337,19 @@ function FarmActionOverlay({
                   }}
                   type="button"
                 >
-                  {mode === "fence" ? (
-                    (["top", "right", "bottom", "left"] as FenceEdgeSide[]).map((edge) => (
-                      <span
-                        key={edge}
-                        className={`farm-picker__edge farm-picker__edge--${edge} ${
-                          !isFenceSegmentBuildable(player, edgeToSegment(row, col, edge))
-                            ? "invalid"
-                            : hasFence(player, edgeToSegment(row, col, edge))
-                            ? "placed"
-                            : selectedSegments.some((item) => segmentKey(item) === segmentKey(edgeToSegment(row, col, edge)))
-                              ? "selected"
-                              : ""
-                        }`}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          const segment = edgeToSegment(row, col, edge);
-                          if (hasFence(player, segment) || !isFenceSegmentBuildable(player, segment)) return;
-                          toggleSegment(segment);
-                        }}
-                      />
-                    ))
-                  ) : null}
                   <strong>{mode === "animal" && animalTarget ? animalTarget.label : cellLabel(cell, player)}</strong>
                   <small>{col},{row}</small>
                 </button>
               );
             }),
           )}
+          {mode === "fence" ? (
+            <FenceStickPickerLayer
+              player={player}
+              selectedSegments={selectedSegments}
+              onToggle={toggleSegment}
+            />
+          ) : null}
         </div>
         {mode === "animal" ? (
           <div className="animal-placement-panel">
@@ -573,17 +558,61 @@ function canPayRoomCost(player: PlayerState, roomCount: number): boolean {
   return cost.availableMaterial >= cost.material && player.resources.reed >= cost.reed;
 }
 
+function FenceStickPickerLayer({
+  player,
+  selectedSegments,
+  onToggle,
+}: {
+  player: PlayerState;
+  selectedSegments: FenceSegment[];
+  onToggle: (segment: FenceSegment) => void;
+}) {
+  return (
+    <div className="farm-picker__fence-layer">
+      {allFenceSegments(player.farm.rows, player.farm.cols).map((segment) => {
+        const key = segmentKey(segment);
+        const placed = hasFence(player, segment);
+        const selected = selectedSegments.some((item) => segmentKey(item) === key);
+        const buildable = isFenceSegmentBuildable(player, segment);
+        return (
+          <button
+            key={key}
+            type="button"
+            className={`farm-picker__stick farm-picker__stick--${segment.orientation} ${placed ? "placed" : ""} ${selected ? "selected" : ""} ${!buildable ? "invalid" : ""}`}
+            style={segmentStyle(segment, player.farm.rows, player.farm.cols)}
+            disabled={placed || !buildable}
+            title={fenceSegmentTitle(player, segment)}
+            onClick={(event) => {
+              event.stopPropagation();
+              if (placed || !buildable) return;
+              onToggle(segment);
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
 function translateRoomMaterial(material: PlayerState["farm"]["roomMaterial"]): string {
   if (material === "clay") return "黏土";
   if (material === "stone") return "石头";
   return "木材";
 }
 
-function edgeToSegment(row: number, col: number, edge: FenceEdgeSide): FenceSegment {
-  if (edge === "left") return { orientation: "vertical", row, col };
-  if (edge === "right") return { orientation: "vertical", row, col: col + 1 };
-  if (edge === "top") return { orientation: "horizontal", row, col };
-  return { orientation: "horizontal", row: row + 1, col };
+function allFenceSegments(rows: number, cols: number): FenceSegment[] {
+  const segments: FenceSegment[] = [];
+  for (let row = 0; row < rows; row += 1) {
+    for (let col = 0; col <= cols; col += 1) {
+      segments.push({ orientation: "vertical", row, col });
+    }
+  }
+  for (let row = 0; row <= rows; row += 1) {
+    for (let col = 0; col < cols; col += 1) {
+      segments.push({ orientation: "horizontal", row, col });
+    }
+  }
+  return segments;
 }
 
 function segmentKey(segment: FenceSegment): string {
@@ -597,6 +626,31 @@ function hasFence(player: PlayerState, segment: FenceSegment): boolean {
 function isFenceSegmentBuildable(player: PlayerState, segment: FenceSegment): boolean {
   const adjacent = getSegmentAdjacentCells(player, segment);
   return adjacent.length > 0 && adjacent.every((cell) => !cell.room && !cell.field);
+}
+
+function fenceSegmentTitle(player: PlayerState, segment: FenceSegment): string {
+  if (hasFence(player, segment)) return "已建围栏";
+  if (!isFenceSegmentBuildable(player, segment)) return "房屋和农田边不能建围栏";
+  return "放置围栏";
+}
+
+function segmentStyle(segment: FenceSegment, rows: number, cols: number) {
+  if (segment.orientation === "vertical") {
+    return {
+      left: boundaryOffset(segment.col, cols),
+      top: `calc(${segment.row} * (var(--farm-picker-cell) + var(--farm-picker-gap)) + (var(--farm-picker-cell) / 2))`,
+    };
+  }
+  return {
+    left: `calc(${segment.col} * (var(--farm-picker-cell) + var(--farm-picker-gap)) + (var(--farm-picker-cell) / 2))`,
+    top: boundaryOffset(segment.row, rows),
+  };
+}
+
+function boundaryOffset(index: number, count: number): string {
+  if (index <= 0) return "0px";
+  if (index >= count) return `calc(${count} * var(--farm-picker-cell) + ${count - 1} * var(--farm-picker-gap))`;
+  return `calc(${index} * var(--farm-picker-cell) + ${index - 0.5} * var(--farm-picker-gap))`;
 }
 
 function getSegmentAdjacentCells(player: PlayerState, segment: FenceSegment): Array<PlayerState["farm"]["cells"][number]> {
