@@ -14,6 +14,7 @@ import stoneOvenArtUrl from "../../assets/major-facilities/stone-oven.png";
 import victoryPointUrl from "../../assets/major-facilities/victory-point.png";
 import wellArtUrl from "../../assets/major-facilities/well.png";
 import { cookWithMajorImprovement } from "../../socket/clientSocket";
+import { cookValue } from "../animalCooking";
 import { RESOURCE_ICONS, type ResourceIconKey } from "../VisualSystem/ResourceIcons";
 
 type Animal = AnimalCookInput["animal"];
@@ -425,24 +426,22 @@ function AnimalIcon({ animal }: { animal: Animal }) {
 }
 
 function canPayCard(player: PlayerState | null, card: MajorImprovementDefinition): boolean {
-  return canPayCost(player, card) || Boolean(upgradeFromId(player, card));
+  if (canPayCost(player, card)) return true;
+  const upgradeId = upgradeFromId(player, card);
+  return Boolean(upgradeId && canPayCost(player, card, upgradeId));
 }
 
-function canPayCost(player: PlayerState | null, card: MajorImprovementDefinition): boolean {
+function canPayCost(player: PlayerState | null, card: MajorImprovementDefinition, upgradeId?: string): boolean {
   if (!player) return false;
+  const upgradeCost = upgradeId ? majorImprovements.find((candidate) => candidate.id === upgradeId)?.cost ?? {} : {};
   return Object.entries(card.cost).every(([resource, amount]) => {
     if (!isPlayerResource(resource)) return true;
-    return player.resources[resource] >= amount;
+    return player.resources[resource] >= Math.max(0, amount - (upgradeCost[resource] ?? 0));
   });
 }
 
 function upgradeFromId(player: PlayerState | null, card: MajorImprovementDefinition): string | undefined {
   return card.upgradeFrom?.find((id) => player?.majorImprovements.includes(id));
-}
-
-function cookValue(card: MajorImprovementDefinition, animal: Animal): number {
-  const effect = card.effects.find((candidate) => candidate.type === "cook" && candidate.from === animal);
-  return effect?.type === "cook" ? effect.toFood : 0;
 }
 
 function setCookedAnimalCount(cookedAnimals: AnimalCookInput[], animal: Animal, count: number): AnimalCookInput[] {

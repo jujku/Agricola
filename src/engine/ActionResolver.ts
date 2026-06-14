@@ -110,6 +110,9 @@ export class ActionResolver {
           ? this.updatePlayer(state, playerId, (player) => this.cardManager.bakeBread(player, input.bake!.improvementId, input.bake!.grain))
           : state;
       case "buyMajorImprovement":
+        if (effect.minimumRound && state.round < effect.minimumRound) {
+          throw new Error("当前回合不满足购买大设施前置条件。");
+        }
         return input.majorImprovementId ? this.cardManager.buyMajorImprovement(state, playerId, input.majorImprovementId, input) : state;
       case "playOccupationPlaceholder":
       case "playMinorImprovementPlaceholder":
@@ -142,7 +145,22 @@ export class ActionResolver {
     if (chooseOne && effectsToApply.length > 1) {
       throw new Error("这个行动格只能选择一个行动。");
     }
+    this.assertRequiredPrecedingEffects(effectsToApply);
     return effectsToApply.reduce((currentState, effect) => this.applyEffect(currentState, playerId, actionSpaceId, effect, input), state);
+  }
+
+  private assertRequiredPrecedingEffects(effects: ActionEffect[]): void {
+    const selectedTypes = new Set<string>(effects.map((effect) => effect.type));
+    effects.forEach((effect) => {
+      effect.requiresSelectedEffectTypes?.forEach((requiredType) => {
+        if (!selectedTypes.has(requiredType)) {
+          throw new Error(this.requiredEffectMessage(requiredType));
+        }
+      });
+      if ((effect.type === "buyMajorImprovement" || effect.type === "playMinorImprovementPlaceholder") && selectedTypes.has("renovate") && !effect.requiresSelectedEffectTypes?.includes("renovate")) {
+        throw new Error("必须通过对应的翻修后续行动执行。");
+      }
+    });
   }
 
   private hasSelection(input: ActionInput): boolean {
@@ -175,6 +193,12 @@ export class ActionResolver {
     return effect.type === "playOccupationPlaceholder" || effect.type === "playMinorImprovementPlaceholder";
   }
 
+  private requiredEffectMessage(requiredType: string): string {
+    if (requiredType === "renovate") return "必须先翻修房屋后才能执行后续行动。";
+    if (requiredType === "familyGrowth") return "必须先生孩子后才能打出小设施。";
+    return "缺少前置行动。";
+  }
+
   private takeAccumulated(state: GameState, playerId: string, actionSpaceId: string, input: ActionInput): GameState {
     const actionSpace = state.actionSpaces.find((space) => space.id === actionSpaceId);
     if (!actionSpace) {
@@ -182,22 +206,24 @@ export class ActionResolver {
     }
 
     let nextState = state;
+    const nextAccumulated = { ...actionSpace.accumulated };
     Object.entries(actionSpace.accumulated).forEach(([key, amount]) => {
       if (this.isResourceKey(key)) {
         nextState = this.updatePlayer(nextState, playerId, (player) => this.gainResource(player, key, amount));
+        nextAccumulated[key] = 0;
       }
       if (this.isAnimalKey(key)) {
-        nextState = this.updatePlayer(nextState, playerId, (player) =>
-          input.animalPlacement && input.animalPlacement.animal === key
-            ? this.animalManager.placeAnimals(player, input.animalPlacement, amount)
-            : this.animalManager.addAnimals(player, key, amount),
-        );
+        if (!input.animalPlacement || input.animalPlacement.animal !== key) {
+          throw new Error("必须选择动物安置、烹饪或丢弃方式。");
+        }
+        nextState = this.updatePlayer(nextState, playerId, (player) => this.animalManager.placeAnimals(player, input.animalPlacement!, amount));
+        nextAccumulated[key] = 0;
       }
     });
 
     return {
       ...nextState,
-      actionSpaces: nextState.actionSpaces.map((space) => (space.id === actionSpaceId ? { ...space, accumulated: {} } : space)),
+      actionSpaces: nextState.actionSpaces.map((space) => (space.id === actionSpaceId ? { ...space, accumulated: nextAccumulated } : space)),
     };
   }
 
@@ -243,9 +269,10 @@ export class ActionResolver {
     if ((effect.foodDelta ?? 0) < 0) {
       nextPlayer = this.farmManager.pay(nextPlayer, { food: Math.abs(effect.foodDelta ?? 0) });
     }
-    nextPlayer = input.animalPlacement
-      ? this.animalManager.placeAnimals(nextPlayer, input.animalPlacement, effect.amount)
-      : this.animalManager.addAnimals(nextPlayer, input.animalChoice ?? effect.animal, effect.amount);
+    if (!input.animalPlacement) {
+      throw new Error("必须选择动物安置、烹饪或丢弃方式。");
+    }
+    nextPlayer = this.animalManager.placeAnimals(nextPlayer, input.animalPlacement, effect.amount);
     if ((effect.foodDelta ?? 0) > 0) {
       nextPlayer = this.gainResource(nextPlayer, "food", effect.foodDelta ?? 0);
     }
@@ -298,7 +325,10 @@ export class ActionResolver {
     if (player.animals[chosenAnimal] > 0) {
       throw new Error("只能增加一只没有的动物。");
     }
-    return input.animalPlacement ? this.animalManager.placeAnimals(player, input.animalPlacement, 1) : this.animalManager.addAnimals(player, chosenAnimal, 1);
+    if (!input.animalPlacement) {
+      throw new Error("必须选择动物安置、烹饪或丢弃方式。");
+    }
+    return this.animalManager.placeAnimals(player, input.animalPlacement, 1);
   }
 
   private gainResource(player: PlayerState, resource: ResourceKey, amount: number): PlayerState {

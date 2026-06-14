@@ -8,7 +8,7 @@ export const playerExpandActions: ActionDefinition[] = [
     cost: {},
     gain: {},
     prerequisites: [],
-    rules: ["四选一：小树林、朴素生孩子、资源市场、动物市场。", "小树林：每回合累积1木材，执行时拿走全部木材。", "朴素生孩子：第5回合后，且有空房间时新增1家庭成员。", "资源市场：获得1石头和1木头。", "动物市场：三选一，获得羊和食物、获得野猪、或支付食物获得牛。"],
+    rules: ["四选一：小树林、朴素生孩子、资源市场、动物市场。", "小树林：每回合累积1木材，执行时拿走全部木材。", "朴素生孩子：第5回合后，且有空房间时新增1家庭成员。", "资源市场：获得1石头和1食物。", "动物市场：三选一，获得羊和食物、获得野猪、或支付食物获得牛。"],
     restrictions: ["只能被一个工人使用"],
     occupiedBy: null,
     effects: [
@@ -17,7 +17,7 @@ export const playerExpandActions: ActionDefinition[] = [
         effects: [
           { id: "copse", label: "小树林", description: "拿走此格累积的全部木材。", type: "takeAccumulated" },
           { id: "modest-wish-for-children", label: "朴素生孩子", description: "第5回合后，且有空房间时新增1家庭成员。", type: "familyGrowth", requiresRoom: true, minimumRound: 5 },
-          { id: "resource-market", label: "资源市场", description: "获得1石头和1木头。", type: "buildingSupplies", resources: { stone: 1, wood: 1 } },
+          { id: "resource-market", label: "资源市场", description: "获得1石头和1食物。", type: "buildingSupplies", resources: { stone: 1, food: 1 } },
           {
             id: "animal-market",
             label: "动物市场",

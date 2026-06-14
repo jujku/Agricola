@@ -145,9 +145,18 @@ export class CardManager {
 
   private payForMajor(player: PlayerState, card: MajorImprovementDefinition, upgradeFromId?: string): PlayerState {
     if (upgradeFromId && card.upgradeFrom?.includes(upgradeFromId) && player.majorImprovements.includes(upgradeFromId)) {
+      const upgradeFrom = majorImprovements.find((candidate) => candidate.id === upgradeFromId);
+      const discount = upgradeFrom?.cost ?? {};
+      const difference = Object.entries(card.cost).reduce<Partial<Record<ResourceKey, number>>>((cost, [resource, amount]) => {
+        const key = resource as ResourceKey;
+        const required = Math.max(0, amount - (discount[resource] ?? 0));
+        if (required > 0) cost[key] = required;
+        return cost;
+      }, {});
+      const paid = this.farmManager.pay(player, difference);
       return {
-        ...player,
-        majorImprovements: player.majorImprovements.filter((id) => id !== upgradeFromId),
+        ...paid,
+        majorImprovements: paid.majorImprovements.filter((id) => id !== upgradeFromId),
       };
     }
     return this.farmManager.pay(player, card.cost as Partial<Record<ResourceKey, number>>);

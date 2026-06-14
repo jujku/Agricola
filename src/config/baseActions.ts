@@ -8,6 +8,7 @@ export type ActionEffectMeta = {
   id?: string;
   label?: string;
   description?: string;
+  requiresSelectedEffectTypes?: string[];
 };
 
 export type ActionEffect =
@@ -20,7 +21,7 @@ export type ActionEffect =
   | (ActionEffectMeta & { type: "buildFences" })
   | (ActionEffectMeta & { type: "sow" })
   | (ActionEffectMeta & { type: "bakeBread" })
-  | (ActionEffectMeta & { type: "buyMajorImprovement" })
+  | (ActionEffectMeta & { type: "buyMajorImprovement"; minimumRound?: number })
   | (ActionEffectMeta & { type: "playOccupationPlaceholder" })
   | (ActionEffectMeta & { type: "playMinorImprovementPlaceholder" })
   | (ActionEffectMeta & { type: "takeStartingPlayer" })
@@ -191,17 +192,17 @@ export const baseActions: ActionDefinition[] = [
     name: "广场",
     type: "choice",
     cost: {},
-    gain: { grain: 1 },
+    gain: {},
     prerequisites: [],
-    rules: ["可获得起始玩家标记", "可获得一个粮食", "也可两种都执行"],
-    restrictions: [],
+    rules: ["可获得起始玩家标记。", "可打出1张职业卡并支付食物。", "也可两者都执行。"],
+    restrictions: ["职业卡内容未来开放"],
     occupiedBy: null,
     effects: [
       {
         type: "chooseAny",
         effects: [
           { type: "takeStartingPlayer", label: "拿起始玩家", description: "获得起始玩家标记，下回合优先行动。" },
-          { type: "gainResource", label: "获得谷物", description: "获得1个谷物。", resource: "grain", amount: 1 },
+          { type: "playOccupationPlaceholder", label: "打出职业卡", description: "支付食物后打出1张职业卡；当前版本为占位。" },
         ],
       },
     ],

@@ -25,10 +25,9 @@ export function ActionSpace({ actionSpace, compact = false, isInteractive = fals
   const Icon = RESOURCE_ICONS[iconType];
   const ruleItems = getActionCardItems(actionSpace);
   const actionSummary = getActionSummary(actionSpace);
-  const accumulated = Object.entries(actionSpace.accumulated).filter((entry): entry is [ResourceIconKey, number] =>
-    isResourceIcon(entry[0]) && entry[1] > 0,
-  );
+  const accumulated = Object.entries(actionSpace.accumulated).filter((entry): entry is [ResourceIconKey, number] => isResourceIcon(entry[0]));
   const gains = Object.entries(actionSpace.gain).filter((entry): entry is [ResourceIconKey, number] => isResourceIcon(entry[0]) && entry[1] > 0);
+  const hasAccumulatedResources = accumulated.length > 0;
   const isBlocked = actionSpace.type === "placeholder";
   const variant = isBlocked ? "blocked" : actionSpace.occupiedBy ? "occupied" : "normal";
 
@@ -55,9 +54,9 @@ export function ActionSpace({ actionSpace, compact = false, isInteractive = fals
       <div className="action-card__divider" />
 
       <section className="action-card__resource-area">
-        <span className="action-card__caption">{accumulated.length > 0 ? "累积资源" : "即时收益"}</span>
+        <span className="action-card__caption">{hasAccumulatedResources ? "累积资源" : "即时收益"}</span>
         <div className="action-card__resources">
-          {(accumulated.length > 0 ? accumulated : gains).map(([resource, count]) => {
+          {(hasAccumulatedResources ? accumulated : gains).map(([resource, count]) => {
             const ResourceIcon = RESOURCE_ICONS[resource];
             return (
               <span key={resource} className="action-card__resource">
@@ -68,7 +67,7 @@ export function ActionSpace({ actionSpace, compact = false, isInteractive = fals
               </span>
             );
           })}
-          {accumulated.length === 0 && gains.length === 0 ? <span className="action-card__empty">按规则执行</span> : null}
+          {!hasAccumulatedResources && gains.length === 0 ? <span className="action-card__empty">按规则执行</span> : null}
         </div>
       </section>
 
@@ -96,6 +95,8 @@ export function ActionSpace({ actionSpace, compact = false, isInteractive = fals
 }
 
 function getActionCardItems(actionSpace: ActionSpaceState): string[] {
+  const prerequisite = prerequisiteActionDescription(actionSpace);
+  if (prerequisite) return [prerequisite];
   const actionNames = getActionNameItems(actionSpace);
   if (actionNames.length > 1) {
     return [`${choicePrefix(actionSpace)}：${actionNames.join("、")}`];
@@ -131,6 +132,8 @@ function choicePrefix(actionSpace: ActionSpaceState): string {
 }
 
 function getActionSummary(actionSpace: ActionSpaceState): string {
+  const prerequisite = prerequisiteActionDescription(actionSpace);
+  if (prerequisite) return "按顺序执行后续行动。";
   const root = actionSpace.effects[0];
   if (actionSpace.effects.length === 1 && root && "effects" in root && root.effects) {
     return root.type === "chooseAny" ? "点击后选择要执行的行动。" : "点击后选择其中一个行动。";
@@ -138,6 +141,20 @@ function getActionSummary(actionSpace: ActionSpaceState): string {
   if (actionSpace.prerequisites.length > 0) return `条件：${actionSpace.prerequisites[0]}`;
   if (actionSpace.restrictions.length > 0) return actionSpace.restrictions[0];
   return actionSpace.rules[1] ?? actionSpace.rules[0] ?? "确认后执行。";
+}
+
+function prerequisiteActionDescription(actionSpace: ActionSpaceState): string | null {
+  const root = actionSpace.effects[0];
+  if (!(actionSpace.effects.length === 1 && root && "effects" in root && root.effects)) return null;
+  const byType = new Map<string, string>(root.effects.map((effect) => [effect.type, effect.label ?? effectTypeLabel(effect.type)]));
+  const descriptions = root.effects.flatMap((effect) =>
+    (effect.requiresSelectedEffectTypes ?? []).map((requiredType) => {
+      const prerequisite = byType.get(requiredType) ?? effectTypeLabel(requiredType);
+      const followUp = effect.label ?? effectTypeLabel(effect.type);
+      return `${prerequisite}后可${followUp}`;
+    }),
+  );
+  return descriptions.length > 0 ? descriptions.join("；") : null;
 }
 
 function effectTypeLabel(type: string): string {

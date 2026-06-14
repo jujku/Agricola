@@ -310,7 +310,7 @@ describe("GameEngine", () => {
     expect(nextState.lastError).toBe("资源不足。");
   });
 
-  it("gives one stone and one wood from the two player resource market", () => {
+  it("gives one stone and one food from the two player resource market", () => {
     const { engine, state } = startTwoPlayerGame();
     const player = state.players[0];
 
@@ -320,9 +320,9 @@ describe("GameEngine", () => {
     });
 
     expect(nextState.players[0].resources.stone).toBe(1);
-    expect(nextState.players[0].resources.wood).toBe(1);
+    expect(nextState.players[0].resources.wood).toBe(0);
     expect(nextState.players[0].resources.reed).toBe(0);
-    expect(nextState.players[0].resources.food).toBe(player.resources.food);
+    expect(nextState.players[0].resources.food).toBe(player.resources.food + 1);
   });
 
   it("keeps the two player expansion hierarchy at four top-level actions", () => {
@@ -426,6 +426,161 @@ describe("GameEngine", () => {
 
     expect(nextState.players[0].farm.roomMaterial).toBe("clay");
     expect(nextState.lastError).toBeNull();
+  });
+
+  it("rejects final redevelopment fences without first renovating", () => {
+    const { engine, state } = startTwoPlayerGame();
+    const prepared = {
+      ...state,
+      actionSpaces: [
+        ...state.actionSpaces,
+        {
+          id: "farm-redevelopment-test",
+          name: "最终翻修",
+          type: "choice" as const,
+          cost: {},
+          gain: {},
+          prerequisites: [],
+          rules: [],
+          restrictions: [],
+          occupiedBy: null,
+          accumulated: {},
+          effects: [
+            {
+              type: "chooseAny" as const,
+              effects: [
+                { type: "renovate" as const, id: "final-renovate", allowMajorImprovement: false },
+                { type: "buildFences" as const, id: "final-fences", requiresSelectedEffectTypes: ["renovate"] },
+              ],
+            },
+          ],
+        },
+      ],
+      players: state.players.map((candidate, index) =>
+        index === 0
+          ? {
+              ...candidate,
+              resources: { ...candidate.resources, wood: 4 },
+            }
+          : candidate,
+      ),
+    };
+    const player = prepared.players[0];
+
+    const nextState = engine.placeWorker(prepared, player.id, player.workers[0].id, "farm-redevelopment-test", {
+      selectedEffectTypes: ["buildFences"],
+      selectedEffectIds: ["final-fences"],
+      fenceSegments: [
+        { orientation: "horizontal", row: 0, col: 1 },
+        { orientation: "vertical", row: 0, col: 1 },
+        { orientation: "vertical", row: 0, col: 2 },
+        { orientation: "horizontal", row: 1, col: 1 },
+      ],
+    });
+
+    expect(nextState.lastError).toBe("必须先翻修房屋后才能执行后续行动。");
+    expect(nextState.players[0].farm.fencesUsed).toBe(0);
+  });
+
+  it("renovates before buying a major improvement from house redevelopment", () => {
+    const { engine, state } = startTwoPlayerGame();
+    const prepared = {
+      ...state,
+      actionSpaces: [
+        ...state.actionSpaces,
+        {
+          id: "house-redevelopment-test",
+          name: "房屋翻修",
+          type: "choice" as const,
+          cost: {},
+          gain: {},
+          prerequisites: [],
+          rules: [],
+          restrictions: [],
+          occupiedBy: null,
+          accumulated: {},
+          effects: [
+            {
+              type: "chooseAny" as const,
+              effects: [
+                { type: "renovate" as const, id: "redevelop-renovate", allowMajorImprovement: false },
+                { type: "buyMajorImprovement" as const, id: "redevelop-major", requiresSelectedEffectTypes: ["renovate"] },
+              ],
+            },
+          ],
+        },
+      ],
+      players: state.players.map((candidate, index) =>
+        index === 0
+          ? {
+              ...candidate,
+              resources: { ...candidate.resources, clay: 4, reed: 1 },
+            }
+          : candidate,
+      ),
+    };
+    const player = prepared.players[0];
+
+    const nextState = engine.placeWorker(prepared, player.id, player.workers[0].id, "house-redevelopment-test", {
+      selectedEffectTypes: ["renovate", "buyMajorImprovement"],
+      selectedEffectIds: ["redevelop-renovate", "redevelop-major"],
+      majorImprovementId: "fireplace-a",
+    });
+
+    expect(nextState.players[0].farm.roomMaterial).toBe("clay");
+    expect(nextState.players[0].majorImprovements).toContain("fireplace-a");
+    expect(nextState.players[0].resources.clay).toBe(0);
+    expect(nextState.players[0].resources.reed).toBe(0);
+    expect(nextState.lastError).toBeNull();
+  });
+
+  it("rejects buying a redevelopment major improvement without renovation", () => {
+    const { engine, state } = startTwoPlayerGame();
+    const prepared = {
+      ...state,
+      actionSpaces: [
+        ...state.actionSpaces,
+        {
+          id: "house-redevelopment-test",
+          name: "房屋翻修",
+          type: "choice" as const,
+          cost: {},
+          gain: {},
+          prerequisites: [],
+          rules: [],
+          restrictions: [],
+          occupiedBy: null,
+          accumulated: {},
+          effects: [
+            {
+              type: "chooseAny" as const,
+              effects: [
+                { type: "renovate" as const, id: "redevelop-renovate", allowMajorImprovement: false },
+                { type: "buyMajorImprovement" as const, id: "redevelop-major", requiresSelectedEffectTypes: ["renovate"] },
+              ],
+            },
+          ],
+        },
+      ],
+      players: state.players.map((candidate, index) =>
+        index === 0
+          ? {
+              ...candidate,
+              resources: { ...candidate.resources, clay: 2 },
+            }
+          : candidate,
+      ),
+    };
+    const player = prepared.players[0];
+
+    const nextState = engine.placeWorker(prepared, player.id, player.workers[0].id, "house-redevelopment-test", {
+      selectedEffectTypes: ["buyMajorImprovement"],
+      selectedEffectIds: ["redevelop-major"],
+      majorImprovementId: "fireplace-a",
+    });
+
+    expect(nextState.lastError).toBe("必须先翻修房屋后才能执行后续行动。");
+    expect(nextState.players[0].majorImprovements).not.toContain("fireplace-a");
   });
 
   it("bakes bread from the sow and bake action", () => {
@@ -656,7 +811,25 @@ describe("GameEngine", () => {
     });
 
     expect(nextState.players[0].resources.stone).toBe(2);
-    expect(nextState.actionSpaces.find((space) => space.id === "western-quarry-test")?.accumulated).toEqual({});
+    expect(nextState.actionSpaces.find((space) => space.id === "western-quarry-test")?.accumulated).toEqual({ stone: 0 });
+    expect(nextState.lastError).toBeNull();
+  });
+
+  it("takes the two-player copse accumulated wood without animal placement", () => {
+    const { engine, state } = startTwoPlayerGame();
+    const prepared = {
+      ...state,
+      actionSpaces: state.actionSpaces.map((space) => (space.id === "two-player-flex" ? { ...space, accumulated: { wood: 2 } } : space)),
+    };
+    const player = prepared.players[0];
+
+    const nextState = engine.placeWorker(prepared, player.id, player.workers[0].id, "two-player-flex", {
+      selectedEffectTypes: ["takeAccumulated"],
+      selectedEffectIds: ["copse"],
+    });
+
+    expect(nextState.players[0].resources.wood).toBe(2);
+    expect(nextState.actionSpaces.find((space) => space.id === "two-player-flex")?.accumulated).toEqual({ wood: 0 });
     expect(nextState.lastError).toBeNull();
   });
 
@@ -673,17 +846,17 @@ describe("GameEngine", () => {
     expect(nextState.lastError).toBeNull();
   });
 
-  it("resolves choose-any direct actions when the UI sends generated selection ids", () => {
+  it("resolves the meeting place starting player action when the occupation placeholder is unavailable", () => {
     const { engine, state } = startTwoPlayerGame();
     const player = state.players[0];
 
     const nextState = engine.placeWorker(state, player.id, player.workers[0].id, "meeting-place", {
-      selectedEffectTypes: ["takeStartingPlayer", "gainResource"],
-      selectedEffectIds: ["takeStartingPlayer:0", "gainResource:grain:1"],
+      selectedEffectTypes: ["takeStartingPlayer"],
+      selectedEffectIds: ["takeStartingPlayer:0"],
     });
 
     expect(nextState.startingPlayer).toBe(player.id);
-    expect(nextState.players[0].resources.grain).toBe(1);
+    expect(nextState.players[0].resources.grain).toBe(0);
     expect(nextState.lastError).toBeNull();
   });
 
@@ -699,6 +872,113 @@ describe("GameEngine", () => {
 
     const plowedCell = nextState.players[0].farm.cells.find((cell) => cell.row === 0 && cell.col === 0);
     expect(plowedCell?.field).toEqual({ crop: null, count: 0 });
+    expect(nextState.lastError).toBeNull();
+  });
+
+  it("plows then sows a newly plowed field from the same choose-any action", () => {
+    const { engine, state } = startTwoPlayerGame();
+    const prepared = {
+      ...state,
+      actionSpaces: [
+        ...state.actionSpaces,
+        {
+          id: "plow-sow-test",
+          name: "耕田与播种",
+          type: "choice" as const,
+          cost: {},
+          gain: {},
+          prerequisites: [],
+          rules: [],
+          restrictions: [],
+          occupiedBy: null,
+          accumulated: {},
+          effects: [
+            {
+              type: "chooseAny" as const,
+              effects: [
+                { id: "plow-test", type: "plowField" as const },
+                { id: "sow-test", type: "sow" as const },
+              ],
+            },
+          ],
+        },
+      ],
+      players: state.players.map((candidate, index) =>
+        index === 0
+          ? {
+              ...candidate,
+              resources: { ...candidate.resources, grain: 1 },
+            }
+          : candidate,
+      ),
+    };
+    const player = prepared.players[0];
+
+    const nextState = engine.placeWorker(prepared, player.id, player.workers[0].id, "plow-sow-test", {
+      selectedEffectTypes: ["plowField", "sow"],
+      selectedEffectIds: ["plow-test", "sow-test"],
+      fieldCell: { row: 0, col: 0 },
+      sow: [{ crop: "grain", cells: [{ row: 0, col: 0 }] }],
+    });
+
+    const cell = nextState.players[0].farm.cells.find((candidate) => candidate.row === 0 && candidate.col === 0);
+    expect(cell?.field).toEqual({ crop: "grain", count: 3 });
+    expect(nextState.players[0].resources.grain).toBe(0);
+    expect(nextState.lastError).toBeNull();
+  });
+
+  it("sows grain and vegetables from separate sow inputs in one action", () => {
+    const { engine, state } = startTwoPlayerGame();
+    const prepared = {
+      ...state,
+      actionSpaces: [
+        ...state.actionSpaces,
+        {
+          id: "sow-both-test",
+          name: "播种",
+          type: "choice" as const,
+          cost: {},
+          gain: {},
+          prerequisites: [],
+          rules: [],
+          restrictions: [],
+          occupiedBy: null,
+          accumulated: {},
+          effects: [{ id: "sow-test", type: "sow" as const }],
+        },
+      ],
+      players: state.players.map((candidate, index) =>
+        index === 0
+          ? {
+              ...candidate,
+              resources: { ...candidate.resources, grain: 1, vegetable: 1 },
+              farm: {
+                ...candidate.farm,
+                cells: candidate.farm.cells.map((cell) =>
+                  (cell.row === 0 && cell.col === 0) || (cell.row === 0 && cell.col === 1) ? { ...cell, field: { crop: null, count: 0 } } : cell,
+                ),
+              },
+            }
+          : candidate,
+      ),
+    };
+    const player = prepared.players[0];
+
+    const nextState = engine.placeWorker(prepared, player.id, player.workers[0].id, "sow-both-test", {
+      selectedEffectTypes: ["sow"],
+      selectedEffectIds: ["sow-test"],
+      sow: [
+        { crop: "grain", cells: [{ row: 0, col: 0 }] },
+        { crop: "vegetable", cells: [{ row: 0, col: 1 }] },
+      ],
+    });
+
+    const grainCell = nextState.players[0].farm.cells.find((candidate) => candidate.row === 0 && candidate.col === 0);
+    const vegetableCell = nextState.players[0].farm.cells.find((candidate) => candidate.row === 0 && candidate.col === 1);
+    expect(grainCell?.field).toEqual({ crop: "grain", count: 3 });
+    expect(vegetableCell?.field).toEqual({ crop: "vegetable", count: 2 });
+    expect(nextState.players[0].resources.grain).toBe(0);
+    expect(nextState.players[0].resources.vegetable).toBe(0);
     expect(nextState.lastError).toBeNull();
   });
 
@@ -744,6 +1024,57 @@ describe("GameEngine", () => {
     expect(nextState.players[0].workers).toHaveLength(3);
     expect(nextState.players[0].workers[2].availableRound).toBe(state.round + 1);
     expect(nextState.lastError).toBeNull();
+  });
+
+  it("requires family growth before a family-growth minor improvement placeholder", () => {
+    const { engine, state } = startTwoPlayerGame();
+    const prepared = {
+      ...state,
+      actionSpaces: [
+        ...state.actionSpaces,
+        {
+          id: "family-growth-room-test",
+          name: "生孩子（需要空房）",
+          type: "choice" as const,
+          cost: {},
+          gain: {},
+          prerequisites: [],
+          rules: [],
+          restrictions: [],
+          occupiedBy: null,
+          accumulated: {},
+          effects: [
+            {
+              type: "chooseAny" as const,
+              effects: [
+                { id: "family-growth", type: "familyGrowth" as const, requiresRoom: true },
+                { id: "family-growth-minor", type: "playMinorImprovementPlaceholder" as const, requiresSelectedEffectTypes: ["familyGrowth"] },
+              ],
+            },
+          ],
+        },
+      ],
+      players: state.players.map((candidate, index) =>
+        index === 0
+          ? {
+              ...candidate,
+              farm: {
+                ...candidate.farm,
+                cells: candidate.farm.cells.map((cell) => (cell.row === 0 && cell.col === 0 ? { ...cell, room: true, roomMaterial: "wood" as const } : cell)),
+              },
+            }
+          : candidate,
+      ),
+    };
+    const player = prepared.players[0];
+
+    const nextState = engine.placeWorker(prepared, player.id, player.workers[0].id, "family-growth-room-test", {
+      selectedEffectTypes: ["playMinorImprovementPlaceholder"],
+      selectedEffectIds: ["family-growth-minor"],
+    });
+
+    expect(nextState.lastError).toBe("必须先生孩子后才能打出小设施。");
+    expect(nextState.players[0].workers).toHaveLength(2);
   });
 
   it("does not let unavailable occupation options block a mixed choose-one action", () => {
@@ -840,6 +1171,100 @@ describe("GameEngine", () => {
     expect(cooked.players[0].animals.sheep).toBe(0);
     expect(cooked.players[0].resources.food).toBe(prepared.players[0].resources.food + 2);
     expect(cooked.lastError).toBeNull();
+  });
+
+  it("uses the selected cooking improvement value when cooking newly gained animals", () => {
+    const { engine, state } = startTwoPlayerGame();
+    const prepared = {
+      ...state,
+      players: state.players.map((candidate, index) =>
+        index === 0
+          ? {
+              ...candidate,
+              majorImprovements: ["fireplace-a", "cooking-hearth-a"],
+              resources: { ...candidate.resources, food: 0 },
+            }
+          : candidate,
+      ),
+      actionSpaces: [
+        ...state.actionSpaces,
+        {
+          id: "boar-market-test",
+          name: "野猪市场",
+          type: "accumulation" as const,
+          cost: {},
+          gain: { boar: 1 },
+          prerequisites: [],
+          rules: [],
+          restrictions: [],
+          occupiedBy: null,
+          accumulated: { boar: 1 },
+          effects: [{ type: "takeAccumulated" as const }],
+        },
+      ],
+    };
+    const player = prepared.players[0];
+
+    const nextState = engine.placeWorker(prepared, player.id, player.workers[0].id, "boar-market-test", {
+      selectedEffectTypes: ["takeAccumulated"],
+      selectedEffectIds: ["takeAccumulated:0"],
+      animalPlacement: {
+        animal: "boar",
+        placements: [],
+        cooked: 1,
+        cookImprovementId: "cooking-hearth-a",
+      },
+    });
+
+    expect(nextState.players[0].resources.food).toBe(3);
+    expect(nextState.lastError).toBeNull();
+  });
+
+  it("pays only the clay difference when upgrading a fireplace to a cooking hearth", () => {
+    const { engine, state } = startTwoPlayerGame();
+    const prepared = {
+      ...state,
+      players: state.players.map((candidate, index) =>
+        index === 0
+          ? {
+              ...candidate,
+              majorImprovements: ["fireplace-b"],
+              resources: { ...candidate.resources, clay: 1 },
+            }
+          : candidate,
+      ),
+      majorImprovements: state.majorImprovements.map((card) => (card.id === "fireplace-b" ? { ...card, purchasedBy: "p1" } : card)),
+      actionSpaces: [
+        ...state.actionSpaces,
+        {
+          id: "buy-hearth-test",
+          name: "购买大设施",
+          type: "choice" as const,
+          cost: {},
+          gain: {},
+          prerequisites: [],
+          rules: [],
+          restrictions: [],
+          occupiedBy: null,
+          accumulated: {},
+          effects: [{ id: "buy-major", type: "buyMajorImprovement" as const }],
+        },
+      ],
+    };
+    const player = prepared.players[0];
+
+    const nextState = engine.placeWorker(prepared, player.id, player.workers[0].id, "buy-hearth-test", {
+      selectedEffectTypes: ["buyMajorImprovement"],
+      selectedEffectIds: ["buy-major"],
+      majorImprovementId: "cooking-hearth-a",
+      upgradeFromId: "fireplace-b",
+    });
+
+    expect(nextState.players[0].resources.clay).toBe(0);
+    expect(nextState.players[0].majorImprovements).toContain("cooking-hearth-a");
+    expect(nextState.players[0].majorImprovements).not.toContain("fireplace-b");
+    expect(nextState.majorImprovements.find((card) => card.id === "fireplace-b")?.purchasedBy).toBeNull();
+    expect(nextState.lastError).toBeNull();
   });
 
   it("removes players only while a room is waiting", () => {
@@ -973,7 +1398,7 @@ describe("GameEngine", () => {
     expect(fenced.farm.pastures[0].capacity).toBe(8);
   });
 
-  it("does not allow fences touching rooms or fields", () => {
+  it("does not allow fences between rooms, fields, or their farm boundary", () => {
     const farmManager = new FarmManager();
     const { state } = startTwoPlayerGame();
     const player = {
@@ -985,6 +1410,32 @@ describe("GameEngine", () => {
     };
 
     expect(() => farmManager.buildFencesByEdges(player, [{ row: 1, col: 0, edge: "right" }])).toThrow();
+  });
+
+  it("allows fences between a room or field and an empty cell", () => {
+    const farmManager = new FarmManager();
+    const { state } = startTwoPlayerGame();
+    const player = {
+      ...state.players[0],
+      resources: {
+        ...state.players[0].resources,
+        wood: 5,
+      },
+      farm: {
+        ...state.players[0].farm,
+        cells: state.players[0].farm.cells.map((cell) => (cell.row === 0 && cell.col === 2 ? { ...cell, field: { crop: null, count: 0 } } : cell)),
+      },
+    };
+
+    const fenced = farmManager.buildFencesByEdges(player, [
+      { row: 0, col: 1, edge: "top" },
+      { row: 0, col: 1, edge: "right" },
+      { row: 0, col: 1, edge: "bottom" },
+      { row: 0, col: 1, edge: "left" },
+    ]);
+
+    expect(fenced.farm.pastures).toHaveLength(1);
+    expect(fenced.resources.wood).toBe(1);
   });
 
   it("houses only one animal in the home", () => {
@@ -1077,13 +1528,104 @@ describe("GameEngine", () => {
       animalPlacement: {
         animal: "boar",
         placements: [{ type: "house", count: 1 }],
-        discarded: 0,
       },
     });
 
     expect(updated.players[0].animals.sheep).toBe(0);
     expect(updated.players[0].animals.boar).toBe(1);
     expect(updated.players[0].animals.cattle).toBe(0);
+  });
+
+  it("requires accumulated animals to be fully handled by the player", () => {
+    const { engine, state } = startTwoPlayerGame();
+    const prepared = {
+      ...state,
+      actionSpaces: [
+        ...state.actionSpaces,
+        {
+          id: "sheep-market-test",
+          name: "羊市场",
+          type: "accumulation" as const,
+          cost: {},
+          gain: { sheep: 1 },
+          prerequisites: [],
+          rules: [],
+          restrictions: [],
+          occupiedBy: null,
+          accumulated: { sheep: 3 },
+          effects: [{ type: "takeAccumulated" as const }],
+        },
+      ],
+    };
+    const player = prepared.players[0];
+
+    const nextState = engine.placeWorker(prepared, player.id, player.workers[0].id, "sheep-market-test", {
+      selectedEffectTypes: ["takeAccumulated"],
+      selectedEffectIds: ["takeAccumulated:0"],
+    });
+
+    expect(nextState.lastError).toBe("必须选择动物安置、烹饪或丢弃方式。");
+    expect(nextState.players[0].animals.sheep).toBe(0);
+  });
+
+  it("handles accumulated animals across pasture, house, cooking, and discard choices", () => {
+    const { engine, state } = startTwoPlayerGame();
+    const farmManager = new FarmManager();
+    let player = {
+      ...state.players[0],
+      resources: {
+        ...state.players[0].resources,
+        wood: 4,
+        clay: 2,
+        food: 0,
+      },
+      majorImprovements: ["fireplace-a"],
+    };
+    player = farmManager.buildFencesByEdges(player, [
+      { row: 0, col: 1, edge: "top" },
+      { row: 0, col: 1, edge: "right" },
+      { row: 0, col: 1, edge: "bottom" },
+      { row: 0, col: 1, edge: "left" },
+    ]);
+    const pastureId = player.farm.pastures[0].id;
+    const prepared = {
+      ...state,
+      players: [player, state.players[1]],
+      actionSpaces: [
+        ...state.actionSpaces,
+        {
+          id: "sheep-market-test",
+          name: "羊市场",
+          type: "accumulation" as const,
+          cost: {},
+          gain: { sheep: 1 },
+          prerequisites: [],
+          rules: [],
+          restrictions: [],
+          occupiedBy: null,
+          accumulated: { sheep: 7 },
+          effects: [{ type: "takeAccumulated" as const }],
+        },
+      ],
+    };
+
+    const nextState = engine.placeWorker(prepared, player.id, player.workers[0].id, "sheep-market-test", {
+      selectedEffectTypes: ["takeAccumulated"],
+      selectedEffectIds: ["takeAccumulated:0"],
+      animalPlacement: {
+        animal: "sheep",
+        placements: [
+          { type: "pasture", pastureId, row: 0, col: 1, count: 2 },
+          { type: "house", count: 1 },
+        ],
+        cooked: 2,
+        discarded: 2,
+      },
+    });
+
+    expect(nextState.lastError).toBeNull();
+    expect(nextState.players[0].animals.sheep).toBe(3);
+    expect(nextState.players[0].resources.food).toBe(4);
   });
 
   it("harvests fields before feeding submissions", () => {

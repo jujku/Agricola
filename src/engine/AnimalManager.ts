@@ -44,12 +44,19 @@ export class AnimalManager {
     const cooked = input.cooked ?? 0;
     const discarded = input.discarded ?? 0;
     const placed = input.placements.reduce((sum, placement) => sum + placement.count, 0);
-    if (placed + cooked + discarded > amount) {
-      throw new Error("处理动物数量超过获得数量。");
+    if (placed + cooked + discarded !== amount) {
+      throw new Error("必须处理全部获得的动物。");
     }
     let nextPlayer = this.farmManager.placeAnimals(player, input.animal, amount, input.placements);
     if (cooked > 0) {
-      nextPlayer = this.cookAnimals(nextPlayer, [{ animal: input.animal, count: cooked }]);
+      const foodPerAnimal = input.cookImprovementId ? this.cookValueForImprovement(nextPlayer, input.cookImprovementId, input.animal) : this.cookValue(nextPlayer, input.animal);
+      nextPlayer = {
+        ...nextPlayer,
+        resources: {
+          ...nextPlayer.resources,
+          food: nextPlayer.resources.food + cooked * foodPerAnimal,
+        },
+      };
     }
     return nextPlayer;
   }
@@ -180,10 +187,25 @@ export class AnimalManager {
   }
 
   private cookValue(player: PlayerState, animal: AnimalKey): number {
+    if (!this.canCookAnimal(player)) {
+      throw new Error("没有可烹饪动物的大设施。");
+    }
     const hasHearth = player.majorImprovements.some((id) => id.startsWith("cooking-hearth"));
     if (animal === "cattle") return hasHearth ? 4 : 3;
     if (animal === "boar") return hasHearth ? 3 : 2;
     return 2;
+  }
+
+  private cookValueForImprovement(player: PlayerState, improvementId: string, animal: AnimalKey): number {
+    if (!player.majorImprovements.includes(improvementId)) {
+      throw new Error("玩家没有该大设施。");
+    }
+    const card = majorImprovements.find((candidate) => candidate.id === improvementId);
+    const effect = card?.effects.find((candidate) => candidate.type === "cook" && candidate.from === animal);
+    if (!effect || effect.type !== "cook") {
+      throw new Error("该大设施不能烹饪这种动物。");
+    }
+    return effect.toFood;
   }
 
   private canCookAnimal(player: PlayerState): boolean {

@@ -122,6 +122,14 @@ Major facility cards should keep a fixed shared width and height across all ten 
 
 Major facility art uses `src/client/assets/sprites/major-facilities.png` as the source sprite sheet. Cropped card artwork lives in `src/client/assets/major-facilities/` with `atlas.json` metadata from TexturePacker-style alpha trimming; `card-background.png` is the shared art-slot background, and the individual facility PNGs are layered above it in the card art frame.
 
+Scoring guidance should be available inline near the game header rather than hidden in a modal, but it should be collapsed by default to avoid occupying board space. The collapsed state should clearly identify it as scoring guidance; expanding it should show each scoring item with its icon, quantity or range, and the corresponding victory points, and allow collapsing again.
+
+Independent `chooseAny` action spaces that can execute multiple sub-actions without prerequisites should use per-sub-action confirmation in the UI. Confirmed sub-actions should be locked against repeat selection, while the main action button ends the whole action and submits the confirmed sub-actions together. Do not use this pattern for `chooseOne` spaces or prerequisite chains such as renovation before fences or family growth before minor improvements.
+
+Action-space cards should use normalized descriptions: `chooseOne` as “N选一”, independent `chooseAny` as “可多选”, and prerequisite chains as “前置行动后可后续行动”. Accumulation spaces should continue to show their accumulated resource type after being emptied, with the count shown as 0 until the next replenish.
+
+Fence placement should not show solid fence marks for unbuilt edges. Use hover-only ghost hints for buildable unselected edges, a clearly solid selected state before confirmation, and a distinct solid placed state after construction.
+
 ## Testing Guidelines
 
 Add or update colocated `*.test.ts` files when changing engine, server, shared contracts, persistence, or scoring behavior.

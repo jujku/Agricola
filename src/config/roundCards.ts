@@ -104,10 +104,19 @@ export const roundActionDefinitions: ActionDefinition[] = [
     cost: {},
     gain: {},
     prerequisites: ["所有房屋必须一起翻修"],
-    rules: ["条件：所有房屋必须一起翻修。", "执行顺序：先翻修房屋，然后可购买大设施。", "木屋翻成黏土屋：每间1黏土，额外1芦苇。", "黏土屋翻成石屋：每间1石头，额外1芦苇。"],
+    rules: ["必须先翻修房屋，翻修后可选择购买大设施或打出小设施。", "所有房屋必须一次全部翻修。", "木屋翻成黏土屋：每间1黏土，额外1芦苇。", "黏土屋翻成石屋：每间1石头，额外1芦苇。", "当前版本小设施暂未开放。"],
     restrictions: [],
     occupiedBy: null,
-    effects: [{ type: "renovate", label: "翻修房屋", description: "所有房屋必须一起翻修；翻修后可购买大设施。", allowMajorImprovement: true }],
+    effects: [
+      {
+        type: "chooseAny",
+        effects: [
+          { type: "renovate", id: "redevelop-renovate", label: "翻修房屋", description: "所有房屋必须一次全部翻修。", allowMajorImprovement: false },
+          { type: "buyMajorImprovement", id: "redevelop-major", label: "购买大设施", description: "必须先完成翻修，随后支付资源购买1张大设施。", requiresSelectedEffectTypes: ["renovate"] },
+          { type: "playMinorImprovementPlaceholder", id: "redevelop-minor", label: "打出小设施", description: "必须先完成翻修；小设施将在后续版本开放。", requiresSelectedEffectTypes: ["renovate"] },
+        ],
+      },
+    ],
     playerCounts: allPlayerCounts,
     replenish: {},
     season: 2,
@@ -130,14 +139,22 @@ export const roundActionDefinitions: ActionDefinition[] = [
   {
     id: "family-growth-room",
     name: "生孩子（需要空房）",
-    type: "instant",
+    type: "choice",
     cost: {},
     gain: {},
     prerequisites: ["空房间数量 >= 1"],
-    rules: ["新增1家庭成员", "新成员下轮开始可行动"],
-    restrictions: [],
+    rules: ["必须先新增1家庭成员。", "新成员下轮开始可行动。", "之后可打出1张小设施；当前版本小设施暂未开放。"],
+    restrictions: ["小设施内容未来开放"],
     occupiedBy: null,
-    effects: [{ type: "familyGrowth", requiresRoom: true }],
+    effects: [
+      {
+        type: "chooseAny",
+        effects: [
+          { type: "familyGrowth", id: "family-growth-room", label: "生孩子", description: "需要至少1个空房间；新成员下轮开始可行动。", requiresRoom: true },
+          { type: "playMinorImprovementPlaceholder", id: "family-growth-minor", label: "打出小设施", description: "必须先生孩子；小设施将在后续版本开放。", requiresSelectedEffectTypes: ["familyGrowth"] },
+        ],
+      },
+    ],
     playerCounts: allPlayerCounts,
     replenish: {},
     season: 2,
@@ -247,7 +264,7 @@ export const roundActionDefinitions: ActionDefinition[] = [
     cost: {},
     gain: {},
     prerequisites: [],
-    rules: ["先翻修房屋。", "然后可建造围栏。"],
+    rules: ["必须先翻修房屋，翻修后可建造围栏。", "所有房屋必须一次全部翻修。", "木屋翻成黏土屋：每间1黏土，额外1芦苇。", "黏土屋翻成石屋：每间1石头，额外1芦苇。"],
     restrictions: [],
     occupiedBy: null,
     effects: [
@@ -255,7 +272,7 @@ export const roundActionDefinitions: ActionDefinition[] = [
         type: "chooseAny",
         effects: [
           { type: "renovate", label: "翻修房屋", description: "所有房屋必须一起翻修。", allowMajorImprovement: false },
-          { type: "buildFences", label: "建围栏", description: "逐段选择围栏；每段消耗1木材，必须形成封闭牧场。" },
+          { type: "buildFences", label: "建围栏", description: "必须先完成翻修；逐段选择围栏，每段消耗1木材，必须形成封闭牧场。", requiresSelectedEffectTypes: ["renovate"] },
         ],
       },
     ],

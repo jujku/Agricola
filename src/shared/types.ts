@@ -126,6 +126,7 @@ export interface AnimalPlacementInput {
     | { type: "pasture"; pastureId: string; row: number; col: number; count: number; animal?: FarmAnimalType }
   >;
   cooked?: number;
+  cookImprovementId?: string;
   discarded?: number;
 }
 

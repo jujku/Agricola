@@ -1167,7 +1167,7 @@ button:hover {
 .game-modal.major-facility-modal {
   width: min(1620px, 98vw);
   max-width: 1620px;
-  max-height: 94vh;
+  max-height: min(92vh, calc(100dvh - 40px));
   padding: 14px;
   gap: 8px;
   overflow-y: auto;
@@ -1503,65 +1503,133 @@ button:hover {
 
 .score-guide-bar {
   margin-top: 12px;
+  border: 2px solid rgba(90, 55, 20, 0.38);
+  border-radius: 12px;
+  padding: 6px 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 245, 224, 0.68), rgba(255, 245, 224, 0.18)),
+    var(--farm-paper);
+  box-shadow: 0 4px 0 rgba(90, 55, 20, 0.16);
 }
 
-.score-guide-button {
+.score-guide-header {
   width: 100%;
-  min-height: 50px;
+  min-height: 42px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  border-radius: 12px;
-  background:
-    linear-gradient(180deg, rgba(255, 245, 224, 0.28), transparent 48%),
-    #a0652a;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  box-shadow: none;
   text-align: left;
 }
 
-.score-guide-button small {
-  color: rgba(255, 245, 224, 0.86);
+.score-guide-bar.expanded .score-guide-header {
+  margin-bottom: 8px;
+}
+
+.score-guide-header:hover {
+  transform: none;
+  filter: none;
+  box-shadow: none;
+}
+
+.score-guide-header > div {
+  flex: 1;
+}
+
+.score-guide-header > strong {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.score-guide-header__icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 2px solid rgba(90, 55, 20, 0.42);
+  border-radius: 10px;
+  background: #fff3cf;
+}
+
+.score-guide-header h2,
+.score-guide-header p {
+  margin: 0;
+}
+
+.score-guide-header h2 {
+  color: var(--farm-ink);
+  font-size: 18px;
+  line-height: 1.1;
+}
+
+.score-guide-header p {
+  color: var(--farm-muted);
   font-size: 12px;
   font-weight: 800;
 }
 
-.game-modal.score-guide-modal {
-  width: min(860px, 95vw);
-  text-align: left;
-}
-
-.score-guide-modal .game-modal__eyebrow,
-.score-guide-modal h2 {
-  justify-self: center;
-  text-align: center;
-}
-
 .score-guide-list {
-  max-height: min(620px, 68vh);
-  overflow: auto;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 8px;
 }
 
 .score-guide-row {
   border: 2px solid rgba(90, 55, 20, 0.48);
-  border-radius: 10px;
+  border-radius: 8px;
   padding: 8px 10px;
   display: grid;
-  gap: 4px;
-  background: var(--farm-paper);
+  gap: 8px;
+  align-content: start;
+  background: rgba(255, 249, 232, 0.9);
 }
 
-.score-guide-row strong {
+.score-guide-row h3 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 15px;
+  line-height: 1.2;
 }
 
-.score-guide-row span {
+.score-guide-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.score-guide-chip {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid rgba(90, 55, 20, 0.28);
+  border-radius: 999px;
+  padding: 4px 7px;
+  background: #fffaf0;
   color: var(--farm-muted);
   font-size: 12px;
   font-weight: 800;
   line-height: 1.35;
+}
+
+.score-guide-chip strong {
+  color: var(--farm-ink);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.score-guide-chip small {
+  color: var(--farm-muted);
+  font-size: 11px;
+  white-space: nowrap;
 }
 
 .game-modal.final-score-modal {
@@ -1786,6 +1854,7 @@ button:hover {
   place-items: center;
   padding: 20px;
   background: rgba(58, 31, 0, 0.24);
+  overflow: hidden;
 }
 
 .modal-layer--notice {
@@ -1795,6 +1864,7 @@ button:hover {
 
 .game-modal {
   width: min(360px, 100%);
+  max-height: min(92vh, calc(100dvh - 40px));
   border: 3px solid var(--farm-stroke);
   border-radius: 16px;
   padding: 18px;
@@ -1806,6 +1876,22 @@ button:hover {
   box-shadow: 6px 8px 0 rgba(58, 31, 0, 0.3);
   text-align: center;
   animation: modal-pop 180ms ease-out;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.game-modal::-webkit-scrollbar,
+.major-facility-grid::-webkit-scrollbar,
+.final-score-table::-webkit-scrollbar {
+  display: none;
+}
+
+.major-facility-grid,
+.final-score-table {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .game-modal--notice {
@@ -1858,14 +1944,50 @@ button:hover {
   transform: none;
 }
 
+.effect-choice-row button.confirmed {
+  border-color: rgba(47, 122, 42, 0.42);
+  background: #c8df91;
+}
+
+.confirmed-sub-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  color: var(--farm-muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.confirmed-sub-actions strong {
+  font-size: 12px;
+}
+
+.confirmed-sub-actions span {
+  border: 1px solid rgba(47, 122, 42, 0.42);
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: #eff7cd;
+  color: #315f26;
+}
+
 .game-modal.farm-action-modal {
   width: min(620px, 96vw);
   text-align: left;
 }
 
+.game-modal.improvement-choice-modal {
+  width: min(560px, 94vw);
+  text-align: left;
+}
+
 .farm-action-modal .game-modal__eyebrow,
 .farm-action-modal h2,
-.farm-action-modal > p {
+.farm-action-modal > p,
+.improvement-choice-modal .game-modal__eyebrow,
+.improvement-choice-modal h2,
+.improvement-choice-modal > p {
   justify-self: center;
   text-align: center;
 }
@@ -1950,39 +2072,52 @@ button:hover {
   min-width: 0;
   min-height: 0;
   padding: 0;
-  border: 2px solid rgba(58, 31, 0, 0.6);
+  border: 2px solid transparent;
   border-radius: 999px;
-  background:
-    linear-gradient(90deg, rgba(255, 236, 170, 0.4), transparent 34%),
-    rgba(95, 53, 24, 0.52);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 230, 170, 0.35),
-    0 2px 1px rgba(58, 31, 0, 0.34);
+  background: transparent;
+  box-shadow: none;
   pointer-events: auto;
   transform: translate(-50%, -50%);
   transition: background 120ms ease, box-shadow 120ms ease, transform 120ms ease;
 }
 
-.farm-picker__stick:hover,
-.farm-picker__stick.selected,
-.farm-picker__stick.placed {
-  background: var(--player-color, #5f3518);
+.farm-picker__stick:hover {
+  border-color: rgba(58, 31, 0, 0.38);
+  background: rgba(95, 53, 24, 0.2);
+  box-shadow: 0 0 0 3px rgba(240, 176, 48, 0.28);
+  transform: translate(-50%, -50%) scale(1.04);
+}
+
+.farm-picker__stick.selected {
+  border-color: rgba(58, 31, 0, 0.7);
+  background:
+    linear-gradient(90deg, rgba(255, 236, 170, 0.36), transparent 34%),
+    #f0b030;
   box-shadow:
-    inset 0 1px 0 rgba(255, 230, 170, 0.4),
-    0 0 0 3px rgba(240, 176, 48, 0.42);
+    inset 0 1px 0 rgba(255, 245, 210, 0.46),
+    0 0 0 3px rgba(47, 122, 42, 0.38);
   transform: translate(-50%, -50%) scale(1.06);
 }
 
 .farm-picker__stick.placed {
-  opacity: 0.72;
+  border-color: rgba(58, 31, 0, 0.84);
+  background:
+    linear-gradient(90deg, rgba(255, 236, 170, 0.28), transparent 34%),
+    var(--player-color, #5f3518);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 230, 170, 0.38),
+    0 2px 1px rgba(58, 31, 0, 0.34);
+  transform: translate(-50%, -50%) scale(1.06);
+}
+
+.farm-picker__stick.placed {
   cursor: not-allowed;
-  box-shadow: inset 0 1px 0 rgba(255, 230, 170, 0.3);
 }
 
 .farm-picker__stick.invalid {
   cursor: not-allowed;
-  opacity: 0.18;
-  background: rgba(95, 53, 24, 0.18);
+  opacity: 0;
+  background: transparent;
   box-shadow: none;
 }
 
@@ -1998,7 +2133,8 @@ button:hover {
 
 .farm-action-summary,
 .animal-placement-panel,
-.room-cost-panel {
+.room-cost-panel,
+.renovation-summary {
   border: 2px dashed rgba(90, 55, 20, 0.45);
   border-radius: 12px;
   padding: 9px 10px;
@@ -2009,12 +2145,94 @@ button:hover {
 }
 
 .animal-placement-panel,
-.room-cost-panel {
+.room-cost-panel,
+.renovation-summary {
   display: flex;
   align-items: center;
   justify-content: center;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.animal-cook-options {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.animal-cook-options button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.animal-cook-options button.active {
+  background: #c8df91;
+  color: var(--farm-ink);
+}
+
+.animal-cook-options small {
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.renovation-summary {
+  background: #fff7d8;
+}
+
+.renovation-summary strong {
+  font-size: 14px;
+}
+
+.renovation-summary span {
+  color: var(--farm-muted);
+  font-size: 12px;
+}
+
+.renovation-summary--blocked {
+  border-color: rgba(160, 70, 40, 0.55);
+  background: #ffe2c6;
+}
+
+.improvement-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+}
+
+.improvement-choice-grid button {
+  min-height: 76px;
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  align-items: center;
+  justify-items: start;
+  gap: 8px;
+  padding: 10px;
+  background: #d4b87a;
+  color: var(--farm-stroke);
+  text-align: left;
+}
+
+.improvement-choice-grid button:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.45);
+  opacity: 0.58;
+  transform: none;
+}
+
+.improvement-choice-grid button span {
+  display: grid;
+  gap: 2px;
+}
+
+.improvement-choice-grid button small {
+  color: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.25;
+  opacity: 0.82;
 }
 
 .bake-panel {

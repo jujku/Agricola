@@ -720,8 +720,8 @@ export class FarmManager {
     if (adjacentCells.length === 0) {
       throw new Error("围栏位置不存在。");
     }
-    if (adjacentCells.some((cell) => cell.room || cell.field)) {
-      throw new Error("围栏不能贴着房屋或耕地建造。");
+    if (adjacentCells.every((cell) => cell.room || cell.field)) {
+      throw new Error("围栏不能建在房屋或田地的内部边界上。");
     }
   }
 
