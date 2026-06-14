@@ -1,5 +1,6 @@
 import { animalCapacityRules } from "../config/animalCapacity";
 import type { AnimalKey } from "../config/baseActions";
+import { majorImprovements } from "../config/majorImprovements";
 import type { AnimalCookInput, AnimalPlacementInput } from "../shared/types";
 import type { PlayerState } from "../state/PlayerState";
 import { FarmManager } from "./FarmManager";
@@ -58,7 +59,7 @@ export class AnimalManager {
     cooked.forEach((item) => {
       if (item.count <= 0) return;
       if (!this.canCookAnimal(nextPlayer)) {
-        throw new Error("没有可烹饪动物的主要发展卡。");
+        throw new Error("没有可烹饪动物的大设施。");
       }
       nextPlayer = this.farmManager.removeAnimals(nextPlayer, item.animal, item.count);
       nextPlayer = {
@@ -66,6 +67,34 @@ export class AnimalManager {
         resources: {
           ...nextPlayer.resources,
           food: nextPlayer.resources.food + item.count * this.cookValue(nextPlayer, item.animal),
+        },
+      };
+    });
+    return nextPlayer;
+  }
+
+  cookAnimalsWithImprovement(player: PlayerState, improvementId: string, cooked: AnimalCookInput[]): PlayerState {
+    if (!player.majorImprovements.includes(improvementId)) {
+      throw new Error("玩家没有该大设施。");
+    }
+    const card = majorImprovements.find((candidate) => candidate.id === improvementId);
+    if (!card) {
+      throw new Error("大设施不存在。");
+    }
+
+    let nextPlayer = player;
+    cooked.forEach((item) => {
+      if (item.count <= 0) return;
+      const effect = card.effects.find((candidate) => candidate.type === "cook" && candidate.from === item.animal);
+      if (!effect || effect.type !== "cook") {
+        throw new Error("该大设施不能烹饪这种动物。");
+      }
+      nextPlayer = this.farmManager.removeAnimals(nextPlayer, item.animal, item.count);
+      nextPlayer = {
+        ...nextPlayer,
+        resources: {
+          ...nextPlayer.resources,
+          food: nextPlayer.resources.food + item.count * effect.toFood,
         },
       };
     });

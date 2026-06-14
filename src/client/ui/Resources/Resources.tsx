@@ -1,8 +1,13 @@
 import type { PlayerState } from "../../../state/PlayerState";
+import type { GameState } from "../../../state/GameState";
+import { MajorFacilities } from "../MajorFacilities/MajorFacilities";
 import { RESOURCE_ICONS, type ResourceIconKey } from "../VisualSystem/ResourceIcons";
 
 interface ResourcesProps {
+  game: GameState | null;
+  isOwnPlayer: boolean;
   player: PlayerState | null;
+  roomId: string | null;
 }
 
 const RESOURCE_GROUPS: Array<{
@@ -36,7 +41,7 @@ const RESOURCE_GROUPS: Array<{
   },
 ];
 
-export function Resources({ player }: ResourcesProps) {
+export function Resources({ game, isOwnPlayer, player, roomId }: ResourcesProps) {
   return (
     <section className="resource-panel">
       <header className="resource-panel__header">
@@ -71,6 +76,7 @@ export function Resources({ player }: ResourcesProps) {
                 </div>
               </section>
             ))}
+            <MajorFacilities game={game} isOwnPlayer={isOwnPlayer} player={player} roomId={roomId} />
           </article>
         </div>
       )}

@@ -75,6 +75,24 @@ export interface SubmitHarvestBreedingPayload {
   resolution: AnimalOverflowResolution;
 }
 
+export interface CookWithMajorImprovementPayload {
+  roomId: string;
+  playerId: string;
+  improvementId: string;
+  cookedAnimals: AnimalCookInput[];
+}
+
+export interface AdminRoomPayload {
+  roomId: string;
+}
+
+export interface AdminAdjustResourcePayload {
+  roomId: string;
+  playerId: string;
+  key: "wood" | "clay" | "reed" | "stone" | "grain" | "vegetable" | "food" | "sheep" | "boar" | "cattle" | "begging";
+  delta: number;
+}
+
 export interface ActionNotice {
   message: string;
 }
@@ -83,6 +101,7 @@ export interface RoomListItem {
   roomId: string;
   phase: GameState["phase"];
   round: number;
+  isTestRoom?: boolean;
   players: Array<{
     id: string;
     name: string;
@@ -123,6 +142,7 @@ export interface AnimalOverflowResolution {
 
 export interface ActionInput {
   selectedEffectTypes?: string[];
+  selectedEffectIds?: string[];
   fieldCell?: CellPosition;
   roomCells?: CellPosition[];
   stableCells?: CellPosition[];

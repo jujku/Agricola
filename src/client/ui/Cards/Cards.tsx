@@ -20,11 +20,11 @@ export function Cards() {
           ))}
         </ul>
       )}
-      <h3>主要发展卡</h3>
+      <h3>大设施</h3>
       <ul className="card-list">
         {majorImprovements.map((card) => (
           <li key={card.id} className={card.purchasedBy ? "muted" : ""}>
-            [主] {card.name}（{card.victoryPoints ?? 0}分）{card.purchasedBy ? "已购买" : ""}
+            [大] {card.name}（{card.victoryPoints ?? 0}分）{card.purchasedBy ? "已购买" : ""}
           </li>
         ))}
       </ul>

@@ -15,11 +15,16 @@ export class CardManager {
   buyMajorImprovement(state: GameState, playerId: string, cardId: string, input: ActionInput = {}): GameState {
     const card = majorImprovements.find((candidate) => candidate.id === cardId);
     if (!card) {
-      throw new Error("主要发展卡不存在。");
+      throw new Error("大设施不存在。");
     }
     if (state.majorImprovements.find((candidate) => candidate.id === cardId)?.purchasedBy) {
-      throw new Error("该主要发展卡已被购买。");
+      throw new Error("该大设施已被购买。");
     }
+    const player = state.players.find((candidate) => candidate.id === playerId);
+    const returnedCardId =
+      input.upgradeFromId && card.upgradeFrom?.includes(input.upgradeFromId) && player?.majorImprovements.includes(input.upgradeFromId)
+        ? input.upgradeFromId
+        : undefined;
 
     return this.updatePlayer(state, playerId, (player) => {
       let nextPlayer = this.payForMajor(player, card, input.upgradeFromId);
@@ -34,17 +39,17 @@ export class CardManager {
         nextPlayer = this.bakeBread(nextPlayer, input.bake.improvementId, input.bake.grain);
       }
       return nextPlayer;
-    }, cardId);
+    }, cardId, returnedCardId);
   }
 
   bakeBread(player: PlayerState, improvementId: string, grain: number): PlayerState {
     if (!player.majorImprovements.includes(improvementId)) {
-      throw new Error("玩家没有该烤面包发展卡。");
+      throw new Error("玩家没有该烤面包大设施。");
     }
     const card = majorImprovements.find((candidate) => candidate.id === improvementId);
     const effect = card?.effects.find((candidate) => candidate.type === "bakeBread");
     if (!effect || effect.type !== "bakeBread") {
-      throw new Error("该发展卡不能烤面包。");
+      throw new Error("该大设施不能烤面包。");
     }
     const amount = effect.grainLimit === null ? grain : Math.min(grain, effect.grainLimit);
     if (amount <= 0 || player.resources.grain < amount) {
@@ -62,12 +67,12 @@ export class CardManager {
 
   cook(player: PlayerState, improvementId: string, from: "vegetable" | "sheep" | "boar" | "cattle", amount: number): PlayerState {
     if (!player.majorImprovements.includes(improvementId)) {
-      throw new Error("玩家没有该烹饪发展卡。");
+      throw new Error("玩家没有该烹饪大设施。");
     }
     const card = majorImprovements.find((candidate) => candidate.id === improvementId);
     const effect = card?.effects.find((candidate) => candidate.type === "cook" && candidate.from === from);
     if (!effect || effect.type !== "cook") {
-      throw new Error("该发展卡不能进行此转换。");
+      throw new Error("该大设施不能进行此转换。");
     }
     if (from === "vegetable") {
       if (player.resources.vegetable < amount) {
@@ -159,11 +164,15 @@ export class CardManager {
     };
   }
 
-  private updatePlayer(state: GameState, playerId: string, updater: (player: PlayerState) => PlayerState, purchasedCardId: string): GameState {
+  private updatePlayer(state: GameState, playerId: string, updater: (player: PlayerState) => PlayerState, purchasedCardId: string, returnedCardId?: string): GameState {
     return {
       ...state,
       players: state.players.map((player) => (player.id === playerId ? updater(player) : player)),
-      majorImprovements: state.majorImprovements.map((card) => (card.id === purchasedCardId ? { ...card, purchasedBy: playerId } : card)),
+      majorImprovements: state.majorImprovements.map((card) => {
+        if (card.id === purchasedCardId) return { ...card, purchasedBy: playerId };
+        if (returnedCardId && card.id === returnedCardId) return { ...card, purchasedBy: null };
+        return card;
+      }),
     };
   }
 }

@@ -17,7 +17,7 @@ export const scoringRules: ScoringRule[] = [
   { id: "cattle", ranges: [{ min: 0, max: 0, points: -1 }, { min: 1, max: 1, points: 1 }, { min: 2, max: 3, points: 2 }, { min: 4, max: 5, points: 3 }, { min: 6, max: null, points: 4 }] },
 ];
 
-export const harvestRounds = [4, 7, 9, 11, 13, 14];
+export const harvestRounds = [7, 9, 11, 13, 14];
 
 export const roomPoints = {
   wood: 0,

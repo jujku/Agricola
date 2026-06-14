@@ -85,6 +85,20 @@ export function registerUser(username: string, password: string): { ok: true } |
   return { ok: true };
 }
 
+export function ensureUser(username: string, password: string): void {
+  const cleanUsername = username.trim();
+  if (!cleanUsername || !password) {
+    return;
+  }
+  const existing = getDatabase().prepare("SELECT username FROM users WHERE username = ?").get(cleanUsername);
+  if (existing) {
+    return;
+  }
+  getDatabase()
+    .prepare("INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)")
+    .run(cleanUsername, hashPassword(password), new Date().toISOString());
+}
+
 export function loginUser(username: string, password: string): { ok: true } | { ok: false; message: string } {
   const cleanUsername = username.trim();
   const row = getDatabase().prepare("SELECT password_hash FROM users WHERE username = ?").get(cleanUsername) as

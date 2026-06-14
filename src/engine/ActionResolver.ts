@@ -1,4 +1,4 @@
-import type { ActionEffect, AnimalKey, ResourceKey } from "../config/baseActions";
+import type { ActionEffect, AnimalKey, CropKey, ResourceKey } from "../config/baseActions";
 import type { ActionInput } from "../shared/types";
 import type { GameState } from "../state/GameState";
 import type { PlayerState } from "../state/PlayerState";
@@ -61,9 +61,10 @@ export class ActionResolver {
       nextState = this.applyEffect(nextState, playerId, actionSpaceId, effect, input);
     }
 
+    const afterPlayer = this.getPlayer(nextState, playerId);
     return this.roundManager.advanceCurrentPlayer({
       ...nextState,
-      actionLog: [...nextState.actionLog, `${player.name} 使用 ${actionSpace.name}。`],
+      actionLog: [...nextState.actionLog, this.describeActionLog(state, nextState, player, afterPlayer, actionSpace.name)],
     });
   }
 
@@ -74,7 +75,7 @@ export class ActionResolver {
     if (effect.type === "chooseOne") {
       return this.resolveNestedEffects(state, playerId, actionSpaceId, effect.effects, input, true);
     }
-    if (input.selectedEffectTypes && input.selectedEffectTypes.length > 0 && !input.selectedEffectTypes.includes(effect.type)) {
+    if (this.hasSelection(input) && !this.isSelectedEffect(effect, input)) {
       return state;
     }
 
@@ -87,11 +88,7 @@ export class ActionResolver {
         if (input.animalChoice && input.animalChoice !== effect.animal) {
           return state;
         }
-        return this.updatePlayer(state, playerId, (player) =>
-          input.animalPlacement
-            ? this.animalManager.placeAnimals(player, input.animalPlacement, effect.amount)
-            : this.animalManager.addAnimals(player, input.animalChoice ?? effect.animal, effect.amount),
-        );
+        return this.updatePlayer(state, playerId, (player) => this.applyAnimalGain(player, effect, input));
       case "plowField":
         return input.fieldCell ? this.updatePlayer(state, playerId, (player) => this.farmManager.plowField(player, input.fieldCell!)) : state;
       case "buildRooms":
@@ -116,7 +113,7 @@ export class ActionResolver {
         return input.majorImprovementId ? this.cardManager.buyMajorImprovement(state, playerId, input.majorImprovementId, input) : state;
       case "playOccupationPlaceholder":
       case "playMinorImprovementPlaceholder":
-        return { ...state, lastError: "职业卡和次要发展卡将在未来开放。" };
+        return { ...state, lastError: "职业卡和小设施将在未来开放。" };
       case "takeStartingPlayer":
         return { ...state, startingPlayer: playerId };
       case "renovate":
@@ -126,7 +123,7 @@ export class ActionResolver {
       case "gainMissingAnimal":
         return this.updatePlayer(state, playerId, (player) => this.gainMissingAnimal(player, input));
       case "buildingSupplies":
-        return this.updatePlayer(state, playerId, (player) => this.applyBuildingSupplies(player, input));
+        return this.updatePlayer(state, playerId, (player) => this.applyBuildingSupplies(player, input, effect.resources));
       case "farmingSupplies":
         return this.updatePlayer(state, playerId, (player) => this.applyFarmingSupplies(player, input));
       case "sideJob":
@@ -135,9 +132,47 @@ export class ActionResolver {
   }
 
   private resolveNestedEffects(state: GameState, playerId: string, actionSpaceId: string, effects: ActionEffect[], input: ActionInput, chooseOne: boolean): GameState {
-    const selected = input.selectedEffectTypes;
-    const effectsToApply = selected && selected.length > 0 ? effects.filter((effect) => selected.includes(effect.type)) : chooseOne ? [effects[0]] : effects;
+    const availableEffects = effects.filter((effect) => !this.isUnavailablePlaceholder(effect));
+    const effectsToApply =
+      this.hasSelection(input)
+        ? effects.filter((effect) => this.isSelectedEffect(effect, input))
+        : chooseOne
+          ? availableEffects.slice(0, 1)
+          : availableEffects;
+    if (chooseOne && effectsToApply.length > 1) {
+      throw new Error("这个行动格只能选择一个行动。");
+    }
     return effectsToApply.reduce((currentState, effect) => this.applyEffect(currentState, playerId, actionSpaceId, effect, input), state);
+  }
+
+  private hasSelection(input: ActionInput): boolean {
+    return Boolean(input.selectedEffectIds?.length || input.selectedEffectTypes?.length);
+  }
+
+  private isSelectedEffect(effect: ActionEffect, input: ActionInput): boolean {
+    const selectedIds = input.selectedEffectIds ?? [];
+    if (selectedIds.length > 0) {
+      if (effect.id && selectedIds.includes(effect.id)) return true;
+      if ("effects" in effect && effect.effects?.some((child) => this.isSelectedEffect(child, input))) return true;
+      return this.isSelectedEffectType(effect, input);
+    }
+    return this.isSelectedEffectType(effect, input);
+  }
+
+  private isSelectedEffectType(effect: ActionEffect, input: ActionInput): boolean {
+    const selectedTypes = input.selectedEffectTypes ?? [];
+    if (!selectedTypes.includes(effect.type)) {
+      if ("effects" in effect && effect.effects?.some((child) => this.isSelectedEffect(child, input))) return true;
+      return false;
+    }
+    if (effect.type === "gainAnimal" && input.animalChoice) {
+      return effect.animal === input.animalChoice;
+    }
+    return true;
+  }
+
+  private isUnavailablePlaceholder(effect: ActionEffect): boolean {
+    return effect.type === "playOccupationPlaceholder" || effect.type === "playMinorImprovementPlaceholder";
   }
 
   private takeAccumulated(state: GameState, playerId: string, actionSpaceId: string, input: ActionInput): GameState {
@@ -203,7 +238,27 @@ export class ActionResolver {
     return nextPlayer;
   }
 
-  private applyBuildingSupplies(player: PlayerState, input: ActionInput): PlayerState {
+  private applyAnimalGain(player: PlayerState, effect: Extract<ActionEffect, { type: "gainAnimal" }>, input: ActionInput): PlayerState {
+    let nextPlayer = player;
+    if ((effect.foodDelta ?? 0) < 0) {
+      nextPlayer = this.farmManager.pay(nextPlayer, { food: Math.abs(effect.foodDelta ?? 0) });
+    }
+    nextPlayer = input.animalPlacement
+      ? this.animalManager.placeAnimals(nextPlayer, input.animalPlacement, effect.amount)
+      : this.animalManager.addAnimals(nextPlayer, input.animalChoice ?? effect.animal, effect.amount);
+    if ((effect.foodDelta ?? 0) > 0) {
+      nextPlayer = this.gainResource(nextPlayer, "food", effect.foodDelta ?? 0);
+    }
+    return nextPlayer;
+  }
+
+  private applyBuildingSupplies(player: PlayerState, input: ActionInput, fixedResources?: Partial<Record<ResourceKey, number>>): PlayerState {
+    if (fixedResources) {
+      return Object.entries(fixedResources).reduce((nextPlayer, [resource, amount]) => {
+        if (!this.isResourceKey(resource) || !amount) return nextPlayer;
+        return this.gainResource(nextPlayer, resource, amount);
+      }, player);
+    }
     let nextPlayer = this.gainResource(player, input.resourceChoices?.first ?? "reed", 1);
     nextPlayer = this.gainResource(nextPlayer, input.resourceChoices?.second ?? "wood", 1);
     return this.gainResource(nextPlayer, "food", 1);
@@ -254,6 +309,111 @@ export class ActionResolver {
         [resource]: player.resources[resource] + amount,
       },
     };
+  }
+
+  private describeActionLog(beforeState: GameState, afterState: GameState, beforePlayer: PlayerState, afterPlayer: PlayerState, actionName: string): string {
+    const gains = this.describeResourceChanges(beforePlayer, afterPlayer, true);
+    const costs = this.describeResourceChanges(beforePlayer, afterPlayer, false);
+    const animalChanges = this.describeAnimalChanges(beforePlayer, afterPlayer);
+    const farmChanges = this.describeFarmChanges(beforePlayer, afterPlayer);
+    const markers = beforeState.startingPlayer !== afterState.startingPlayer && afterState.startingPlayer === afterPlayer.id ? ["成为起始玩家"] : [];
+    const parts = [...farmChanges, ...animalChanges, ...gains, ...costs, ...markers];
+    return parts.length > 0 ? `${beforePlayer.name} 使用 ${actionName}：${parts.join("，")}。` : `${beforePlayer.name} 使用 ${actionName}。`;
+  }
+
+  private describeResourceChanges(beforePlayer: PlayerState, afterPlayer: PlayerState, gain: boolean): string[] {
+    return (["wood", "clay", "reed", "stone", "grain", "vegetable", "food"] as ResourceKey[])
+      .map((resource) => ({ resource, diff: afterPlayer.resources[resource] - beforePlayer.resources[resource] }))
+      .filter((item) => (gain ? item.diff > 0 : item.diff < 0))
+      .map((item) => `${gain ? "获得" : "消耗"}${this.resourceLabel(item.resource)} ${Math.abs(item.diff)}`);
+  }
+
+  private describeAnimalChanges(beforePlayer: PlayerState, afterPlayer: PlayerState): string[] {
+    return (["sheep", "boar", "cattle"] as AnimalKey[])
+      .map((animal) => ({ animal, diff: afterPlayer.animals[animal] - beforePlayer.animals[animal] }))
+      .filter((item) => item.diff !== 0)
+      .map((item) => `${item.diff > 0 ? "获得" : "减少"}${this.animalLabel(item.animal)} ${Math.abs(item.diff)}`);
+  }
+
+  private describeFarmChanges(beforePlayer: PlayerState, afterPlayer: PlayerState): string[] {
+    const beforeRooms = beforePlayer.farm.cells.filter((cell) => cell.room).length;
+    const afterRooms = afterPlayer.farm.cells.filter((cell) => cell.room).length;
+    const beforeFields = beforePlayer.farm.cells.filter((cell) => cell.field).length;
+    const afterFields = afterPlayer.farm.cells.filter((cell) => cell.field).length;
+    const beforeStables = beforePlayer.farm.cells.filter((cell) => cell.stable).length;
+    const afterStables = afterPlayer.farm.cells.filter((cell) => cell.stable).length;
+    const changes: string[] = [];
+
+    if (beforePlayer.farm.roomMaterial !== afterPlayer.farm.roomMaterial) {
+      changes.push(`翻修为${this.roomMaterialLabel(afterPlayer.farm.roomMaterial)}房屋`);
+    }
+    if (afterRooms > beforeRooms) {
+      changes.push(`建造房间 ${afterRooms - beforeRooms}`);
+    }
+    if (afterFields > beforeFields) {
+      changes.push(`翻耕田地 ${afterFields - beforeFields}`);
+    }
+    if (afterStables > beforeStables) {
+      changes.push(`建造马厩 ${afterStables - beforeStables}`);
+    }
+    if (afterPlayer.farm.fencesUsed > beforePlayer.farm.fencesUsed) {
+      changes.push(`建造围栏 ${afterPlayer.farm.fencesUsed - beforePlayer.farm.fencesUsed}`);
+    }
+
+    const cropChanges = this.describeFieldCropChanges(beforePlayer, afterPlayer);
+    return [...changes, ...cropChanges];
+  }
+
+  private describeFieldCropChanges(beforePlayer: PlayerState, afterPlayer: PlayerState): string[] {
+    const beforeCrops = this.countFieldCrops(beforePlayer);
+    const afterCrops = this.countFieldCrops(afterPlayer);
+    return (["grain", "vegetable"] as CropKey[])
+      .map((crop) => ({ crop, diff: afterCrops[crop] - beforeCrops[crop] }))
+      .filter((item) => item.diff > 0)
+      .map((item) => `播种${this.resourceLabel(item.crop)} ${item.diff}`);
+  }
+
+  private countFieldCrops(player: PlayerState): Record<CropKey, number> {
+    return player.farm.cells.reduce(
+      (summary, cell) => {
+        if (cell.field?.crop) {
+          summary[cell.field.crop] += cell.field.count;
+        }
+        return summary;
+      },
+      { grain: 0, vegetable: 0 },
+    );
+  }
+
+  private resourceLabel(resource: ResourceKey): string {
+    const labels: Record<ResourceKey, string> = {
+      wood: "木材",
+      clay: "黏土",
+      reed: "芦苇",
+      stone: "石头",
+      grain: "谷物",
+      vegetable: "蔬菜",
+      food: "食物",
+    };
+    return labels[resource];
+  }
+
+  private animalLabel(animal: AnimalKey): string {
+    const labels: Record<AnimalKey, string> = {
+      sheep: "羊",
+      boar: "野猪",
+      cattle: "牛",
+    };
+    return labels[animal];
+  }
+
+  private roomMaterialLabel(material: PlayerState["farm"]["roomMaterial"]): string {
+    const labels: Record<PlayerState["farm"]["roomMaterial"], string> = {
+      wood: "木",
+      clay: "瓦",
+      stone: "石头",
+    };
+    return labels[material];
   }
 
   private getPlayer(state: GameState, playerId: string): PlayerState {

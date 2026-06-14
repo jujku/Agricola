@@ -1,4 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { ActionEffect } from "../../../config/baseActions";
+import { majorImprovements } from "../../../config/majorImprovements";
+import { roundActionDefinitions } from "../../../config/roundCards";
+import { harvestRounds } from "../../../config/scoringRules";
 import type { ActionInput, AnimalPlacementInput } from "../../../shared/types";
 import type { ActionSpaceState } from "../../../state/ActionSpaceState";
 import type { FarmAnimalType, FenceSegment } from "../../../state/FarmState";
@@ -6,13 +10,29 @@ import type { PlayerState } from "../../../state/PlayerState";
 import { placeWorker } from "../../socket/clientSocket";
 import { useGameStore } from "../../store/gameStore";
 import { ActionSpace } from "../ActionSpace/ActionSpace";
+import { MajorFacilityMarket } from "../MajorFacilities/MajorFacilities";
 import { RESOURCE_ICONS, type ResourceIconKey } from "../VisualSystem/ResourceIcons";
 import { getPlayerColorById } from "../VisualSystem/playerColors";
 
 const emptyActionSpaces: ActionSpaceState[] = [];
-const directEffectTypes = new Set(["takeAccumulated", "gainResource", "takeStartingPlayer"]);
+const ROUND_CARD_SEASONS = [1, 1, 1, 1, 2, 2, 2, 3, 3, 4, 4, 5, 5, 6] as const;
+const harvestRoundSet = new Set(harvestRounds);
+const roundActionIds = new Set(roundActionDefinitions.map((action) => action.id));
+const directEffectTypes = new Set(["takeAccumulated", "gainResource", "takeStartingPlayer", "familyGrowth", "renovate", "buildingSupplies"]);
 const farmInteractionTypes = new Set(["plowField", "buildRooms", "buildStables", "buildFences", "sow", "gainAnimal", "gainMissingAnimal", "farmingSupplies", "sideJob"]);
 type FarmActionMode = "field" | "room" | "stable" | "fence" | "sow" | "animal";
+type ActionChoiceMode = "all" | "one" | "any";
+type ActionEffectChoice = {
+  id: string;
+  type: string;
+  label: string;
+  description?: string;
+  mode: FarmActionMode | "direct" | "card" | "unsupported";
+  effect: ActionEffect;
+  childChoices: ActionEffectChoice[];
+  disabled: boolean;
+  disabledReason?: string;
+};
 
 interface BoardProps {
   onSelfAction?: () => void;
@@ -21,28 +41,39 @@ interface BoardProps {
 export function Board({ onSelfAction }: BoardProps) {
   const { game, roomId, username, setNotice } = useGameStore();
   const actionSpaces = game?.actionSpaces ?? emptyActionSpaces;
+  const baseActionSpaces = actionSpaces.filter((actionSpace) => !roundActionIds.has(actionSpace.id));
+  const roundActionSpaces = actionSpaces.filter((actionSpace) => roundActionIds.has(actionSpace.id));
   const currentPlayer = game?.players.find((player) => player.id === game.currentPlayer) ?? null;
+  const adminTestPlayer = game?.players.find((player) => player.id === username) ?? null;
+  const actorPlayer = roomId === "admin-test" ? adminTestPlayer : currentPlayer;
   const currentRound = game?.round ?? 0;
-  const currentWorker = currentPlayer?.workers.find((worker) => worker.location === "home" && worker.availableRound <= currentRound);
+  const currentWorker = actorPlayer?.workers.find((worker) => worker.location === "home" && worker.availableRound <= currentRound);
   const isMyTurn = Boolean(game && username && game.phase === "WORK_PHASE" && game.currentPlayer === username);
+  const isAdminTestRoom = roomId === "admin-test" && username === "admin";
+  const canUseActionSpaces = isMyTurn || isAdminTestRoom;
   const currentPlayerColor = getPlayerColorById(game?.players ?? [], currentPlayer?.id);
   const [pendingAction, setPendingAction] = useState<{ actionSpace: ActionSpaceState; sourceElement: HTMLElement } | null>(null);
+  const [majorFacilityAction, setMajorFacilityAction] = useState<{ actionSpace: ActionSpaceState; sourceElement?: HTMLElement } | null>(null);
   const [farmAction, setFarmAction] = useState<ActionSpaceState | null>(null);
 
   function handleActionClick(actionSpace: ActionSpaceState, sourceElement: HTMLElement) {
-    if (!game || !roomId || !currentPlayer || !currentWorker) {
+    if (!game || !roomId || !actorPlayer || !currentWorker) {
       setNotice("当前没有可用工人。");
       return;
     }
-    if (!isMyTurn) {
+    if (!canUseActionSpaces) {
       setNotice("还没有轮到你行动。");
       return;
     }
-    if (actionSpace.occupiedBy) {
+    if (actionSpace.occupiedBy && !isAdminTestRoom) {
       setNotice("这个行动格已经被占用。");
       return;
     }
-    if (canDirectExecute(actionSpace)) {
+    if (canDirectExecute(actionSpace, actorPlayer)) {
+      if (hasMajorFacilityPurchase(actionSpace)) {
+        setMajorFacilityAction({ actionSpace, sourceElement });
+        return;
+      }
       setPendingAction({ actionSpace, sourceElement });
       return;
     }
@@ -51,17 +82,17 @@ export function Board({ onSelfAction }: BoardProps) {
       onSelfAction?.();
       return;
     }
-    setNotice("这个行动需要卡牌或发展卡选择，暂时不能执行。");
+    setNotice("这个行动需要职业卡或设施选择，暂时不能执行。");
   }
 
   function executeAction(actionSpace: ActionSpaceState, input: ActionInput = {}, sourceElement?: HTMLElement) {
-    if (!game || !roomId || !currentPlayer || !currentWorker) return;
+    if (!game || !roomId || !actorPlayer || !currentWorker) return;
     if (sourceElement) {
       onSelfAction?.();
-      window.setTimeout(() => animateActionResources(actionSpace, sourceElement, currentPlayer.id), 30);
+      window.setTimeout(() => animateActionResources(actionSpace, sourceElement, actorPlayer.id), 30);
     }
     window.setTimeout(() => {
-      placeWorker(roomId, currentPlayer.id, currentWorker.id, actionSpace.id, input);
+      placeWorker(roomId, actorPlayer.id, currentWorker.id, actionSpace.id, input);
     }, 180);
   }
 
@@ -70,32 +101,40 @@ export function Board({ onSelfAction }: BoardProps) {
       <header className="board-panel__header">
         <div>
           <h2>公共行动区</h2>
-          <p className="muted">{isMyTurn ? "轮到你了，点击行动格执行。" : "等待当前玩家行动。"}</p>
+          <p className="muted">{isAdminTestRoom ? "测试房：可以连续点击行动格。" : isMyTurn ? "轮到你了，点击行动格执行。" : "等待当前玩家行动。"}</p>
         </div>
       </header>
       <div className="board-panel__turn board-panel__turn--top" style={{ ["--player-color" as string]: currentPlayerColor }}>
         <span className="turn-marker" aria-hidden="true" />
         <strong>轮到：{currentPlayer?.name ?? "等待玩家"}</strong>
-        <span>{isMyTurn ? "点击行动格执行" : game?.phase === "WORK_PHASE" ? "等待对方行动" : "等待阶段推进"}</span>
+        <span>{isAdminTestRoom ? "测试模式：无限派遣" : isMyTurn ? "点击行动格执行" : game?.phase === "WORK_PHASE" ? "等待对方行动" : "等待阶段推进"}</span>
       </div>
       <div className="action-space-grid">
-        {actionSpaces.length === 0 ? (
+        {baseActionSpaces.length === 0 ? (
           <p className="muted">暂无行动格。</p>
         ) : (
-          actionSpaces.map((actionSpace) => (
+          baseActionSpaces.map((actionSpace) => (
             <ActionSpace
               key={actionSpace.id}
               actionSpace={actionSpace}
-              isInteractive={isMyTurn && !actionSpace.occupiedBy && (canDirectExecute(actionSpace) || canFarmInteract(actionSpace))}
+              isInteractive={canUseActionSpaces && (!actionSpace.occupiedBy || isAdminTestRoom) && (canDirectExecute(actionSpace, actorPlayer ?? undefined) || canFarmInteract(actionSpace))}
               occupiedColor={getPlayerColorById(game?.players ?? [], actionSpace.occupiedBy)}
               onExecute={(sourceElement) => handleActionClick(actionSpace, sourceElement)}
             />
           ))
         )}
       </div>
+      <RoundCardBoard
+        canUseActionSpaces={canUseActionSpaces}
+        currentPlayer={actorPlayer}
+        isAdminTestRoom={isAdminTestRoom}
+        occupiedColorFor={(playerId) => getPlayerColorById(game?.players ?? [], playerId)}
+        onActionClick={handleActionClick}
+        roundActionSpaces={roundActionSpaces}
+      />
       {pendingAction ? (
         <ConfirmActionOverlay
-          actionName={pendingAction.actionSpace.name}
+          actionSpace={pendingAction.actionSpace}
           onCancel={() => setPendingAction(null)}
           onConfirm={() => {
             executeAction(pendingAction.actionSpace, createDirectActionInput(pendingAction.actionSpace), pendingAction.sourceElement);
@@ -103,10 +142,40 @@ export function Board({ onSelfAction }: BoardProps) {
           }}
         />
       ) : null}
-      {farmAction && game && currentPlayer ? (
+      {majorFacilityAction && game ? (
+        <MajorFacilityMarket
+          cardStates={game.majorImprovements}
+          mode="buy"
+          onBuy={(cardId, upgradeFromId) => {
+            executeAction(
+              majorFacilityAction.actionSpace,
+              {
+                majorImprovementId: cardId,
+                upgradeFromId,
+                selectedEffectTypes: createMajorFacilityActionTypes(majorFacilityAction.actionSpace),
+                selectedEffectIds: createMajorFacilityActionIds(majorFacilityAction.actionSpace),
+              },
+              majorFacilityAction.sourceElement,
+            );
+            setMajorFacilityAction(null);
+          }}
+          optionalActionLabel={canExecuteWithoutBuyingMajorFacility(majorFacilityAction.actionSpace) ? "只执行翻修" : undefined}
+          onOptionalAction={
+            canExecuteWithoutBuyingMajorFacility(majorFacilityAction.actionSpace)
+              ? () => {
+                  executeAction(majorFacilityAction.actionSpace, createMajorFacilitySkipInput(majorFacilityAction.actionSpace), majorFacilityAction.sourceElement);
+                  setMajorFacilityAction(null);
+                }
+              : undefined
+          }
+          onClose={() => setMajorFacilityAction(null)}
+          player={actorPlayer}
+        />
+      ) : null}
+      {farmAction && game && actorPlayer ? (
         <FarmActionOverlay
           actionSpace={farmAction}
-          player={currentPlayer}
+          player={actorPlayer}
           onCancel={() => setFarmAction(null)}
           onConfirm={(input) => {
             executeAction(farmAction, input);
@@ -118,11 +187,66 @@ export function Board({ onSelfAction }: BoardProps) {
   );
 }
 
-function canDirectExecute(actionSpace: ActionSpaceState): boolean {
+function RoundCardBoard({
+  canUseActionSpaces,
+  currentPlayer,
+  isAdminTestRoom,
+  occupiedColorFor,
+  onActionClick,
+  roundActionSpaces,
+}: {
+  canUseActionSpaces: boolean;
+  currentPlayer: PlayerState | null;
+  isAdminTestRoom: boolean;
+  occupiedColorFor: (playerId: string | null) => string;
+  onActionClick: (actionSpace: ActionSpaceState, sourceElement: HTMLElement) => void;
+  roundActionSpaces: ActionSpaceState[];
+}) {
+  return (
+    <section className="round-card-board" aria-label="季度行动卡">
+      <header className="round-card-board__header">
+        <h3>季度行动卡</h3>
+        <p className="muted">每个季度内随机翻出；未翻出的牌先以季度数字占位。</p>
+      </header>
+      <div className="round-card-track">
+        {ROUND_CARD_SEASONS.map((season, index) => {
+          const actionSpace = roundActionSpaces[index];
+          const round = index + 1;
+          return (
+            <div key={`round-slot-${round}`} className="round-card-slot">
+              {actionSpace ? (
+                <ActionSpace
+                  actionSpace={actionSpace}
+                  compact
+                  isInteractive={canUseActionSpaces && (!actionSpace.occupiedBy || isAdminTestRoom) && (canDirectExecute(actionSpace, currentPlayer ?? undefined) || canFarmInteract(actionSpace))}
+                  occupiedColor={occupiedColorFor(actionSpace.occupiedBy)}
+                  onExecute={(sourceElement) => onActionClick(actionSpace, sourceElement)}
+                />
+              ) : (
+                <div className={`round-card-placeholder round-card-placeholder--season-${season}`}>
+                  <span>第</span>
+                  <strong>{season}</strong>
+                  <span>季度</span>
+                </div>
+              )}
+              {harvestRoundSet.has(round) ? <div className="round-card-harvest-mark">收获</div> : null}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function canDirectExecute(actionSpace: ActionSpaceState, player?: PlayerState): boolean {
   if (actionSpace.type === "placeholder") return false;
   if (hasAccumulatedAnimal(actionSpace)) return false;
   const leafEffects = flattenEffects(actionSpace.effects);
-  return leafEffects.length > 0 && leafEffects.every((effect) => directEffectTypes.has(effect.type) || isUnavailableCardEffect(effect.type));
+  const availableLeafEffects = leafEffects.filter((effect) => !isUnavailableCardEffect(effect.type));
+  if (availableLeafEffects.length === 0 || !availableLeafEffects.every((effect) => directEffectTypes.has(effect.type) || effect.type === "buyMajorImprovement")) {
+    return false;
+  }
+  return getActionEffectChoices(actionSpace, player).some((choice) => choiceHasExecutableDirectEffect(choice));
 }
 
 function canFarmInteract(actionSpace: ActionSpaceState): boolean {
@@ -135,13 +259,285 @@ function flattenEffects(effects: ActionSpaceState["effects"]): Array<{ type: str
   return effects.flatMap((effect) => ("effects" in effect && effect.effects ? flattenEffects(effect.effects) : [effect]));
 }
 
+function hasBuyMajorImprovement(actionSpace: ActionSpaceState): boolean {
+  return flattenEffects(actionSpace.effects).some((effect) => effect.type === "buyMajorImprovement");
+}
+
+function hasMajorFacilityPurchase(actionSpace: ActionSpaceState): boolean {
+  return flattenEffects(actionSpace.effects).some((effect) => effect.type === "buyMajorImprovement" || (effect.type === "renovate" && "allowMajorImprovement" in effect && effect.allowMajorImprovement));
+}
+
+function canExecuteWithoutBuyingMajorFacility(actionSpace: ActionSpaceState): boolean {
+  return flattenEffects(actionSpace.effects).some((effect) => effect.type === "renovate" && "allowMajorImprovement" in effect && effect.allowMajorImprovement);
+}
+
+function createMajorFacilityActionTypes(actionSpace: ActionSpaceState): string[] {
+  if (hasBuyMajorImprovement(actionSpace)) return ["buyMajorImprovement"];
+  if (canExecuteWithoutBuyingMajorFacility(actionSpace)) return ["renovate"];
+  return createDirectActionInput(actionSpace).selectedEffectTypes ?? [];
+}
+
+function createMajorFacilityActionIds(actionSpace: ActionSpaceState): string[] {
+  const choices = getActionEffectChoices(actionSpace);
+  const targetType = hasBuyMajorImprovement(actionSpace) ? "buyMajorImprovement" : "renovate";
+  const targetChoice = findChoiceByType(choices, targetType);
+  return targetChoice ? [targetChoice.id] : [];
+}
+
+function createMajorFacilitySkipInput(actionSpace: ActionSpaceState): ActionInput {
+  return {
+    selectedEffectTypes: canExecuteWithoutBuyingMajorFacility(actionSpace) ? ["renovate"] : [],
+    selectedEffectIds: createMajorFacilityActionIds(actionSpace),
+  };
+}
+
 function isUnavailableCardEffect(type: string): boolean {
   return type === "playOccupationPlaceholder" || type === "playMinorImprovementPlaceholder";
 }
 
+function getActionChoiceMode(actionSpace: ActionSpaceState): ActionChoiceMode {
+  const root = actionSpace.effects[0];
+  if (actionSpace.effects.length === 1 && "effects" in root && root.effects) {
+    if (root.type === "chooseOne") return "one";
+    if (root.type === "chooseAny") return "any";
+  }
+  return "all";
+}
+
+function getActionEffectChoices(actionSpace: ActionSpaceState, player?: PlayerState): ActionEffectChoice[] {
+  const root = actionSpace.effects[0];
+  const effects = actionSpace.effects.length === 1 && "effects" in root && root.effects ? root.effects : actionSpace.effects;
+  return effects.map((effect, index) => makeEffectChoice(effect, actionSpace, player, String(index)));
+}
+
+function makeEffectChoice(effect: ActionEffect, actionSpace: ActionSpaceState, player: PlayerState | undefined, fallbackId: string): ActionEffectChoice {
+  const id = effect.id ?? effectKey(effect, fallbackId);
+  const childChoices = "effects" in effect && effect.effects ? effect.effects.map((child, index) => makeEffectChoice(child, actionSpace, player, `${id}.${index}`)) : [];
+  const type = effect.type;
+  const disabled = isChoiceDisabled(effect, actionSpace, player, childChoices);
+  return {
+    id,
+    type,
+    label: effectLabel(effect, actionSpace),
+    description: effect.description,
+    mode: effectMode(effect),
+    effect,
+    childChoices,
+    disabled,
+    disabledReason: disabled ? disabledReason(type, actionSpace, player, effect) : undefined,
+  };
+}
+
+function effectKey(effect: ActionEffect, fallbackId: string): string {
+  if (effect.type === "gainAnimal") return `${effect.type}:${effect.animal}:${fallbackId}`;
+  if (effect.type === "gainResource") return `${effect.type}:${effect.resource}:${fallbackId}`;
+  return `${effect.type}:${fallbackId}`;
+}
+
+function initialSelectedEffectIds(choices: ActionEffectChoice[], choiceMode: ActionChoiceMode): string[] {
+  const available = choices.filter((choice) => !choice.disabled);
+  if (choiceMode === "one") return available.slice(0, 1).map((choice) => choice.id);
+  if (choiceMode === "any") return available.slice(0, 1).map((choice) => choice.id);
+  return available.map((choice) => choice.id);
+}
+
+function isChoiceDisabled(effect: ActionEffect, actionSpace: ActionSpaceState, player?: PlayerState, childChoices: ActionEffectChoice[] = []): boolean {
+  const type = effect.type;
+  if (childChoices.length > 0) return childChoices.every((choice) => choice.disabled);
+  if (isUnavailableCardEffect(type)) return true;
+  if (type === "buyMajorImprovement") return !firstAvailableMajorImprovementId(useGameStore.getState().game, player?.id);
+  if (type === "bakeBread") return !player || !canBakeBread(player);
+  if (type === "gainAnimal" && (effect.foodDelta ?? 0) < 0) return !player || player.resources.food < Math.abs(effect.foodDelta ?? 0);
+  return false;
+}
+
+function disabledReason(type: string, actionSpace: ActionSpaceState, player?: PlayerState, effect?: ActionEffect): string {
+  if (type === "playOccupationPlaceholder") return "职业卡未来开放";
+  if (type === "playMinorImprovementPlaceholder") return "小设施未来开放";
+  if (type === "buyMajorImprovement") return "没有可购买的大设施或资源不足";
+  if (type === "bakeBread") return "需要拥有可烤面包的大设施";
+  if (type === "gainAnimal" && effect?.type === "gainAnimal" && (effect.foodDelta ?? 0) < 0) return `需要 ${Math.abs(effect.foodDelta ?? 0)} 个食物`;
+  return actionSpace.name;
+}
+
+function effectMode(effect: ActionEffect): ActionEffectChoice["mode"] {
+  if (effect.type === "chooseOne" || effect.type === "chooseAny") {
+    const firstFarmChoice = effect.effects.find((candidate) => isFarmChoiceMode(effectMode(candidate)));
+    return firstFarmChoice ? effectMode(firstFarmChoice) : effect.effects.some((candidate) => directEffectTypes.has(candidate.type)) ? "direct" : "card";
+  }
+  const type = effect.type;
+  if (type === "plowField") return "field";
+  if (type === "buildRooms") return "room";
+  if (type === "buildStables" || type === "sideJob") return "stable";
+  if (type === "buildFences") return "fence";
+  if (type === "sow") return "sow";
+  if (type === "gainAnimal" || type === "gainMissingAnimal") return "animal";
+  if (type === "buyMajorImprovement" || type === "playOccupationPlaceholder" || type === "playMinorImprovementPlaceholder" || type === "bakeBread") return "card";
+  if (directEffectTypes.has(type) || type === "buildingSupplies") return "direct";
+  return "unsupported";
+}
+
+function isFarmChoiceMode(mode: ActionEffectChoice["mode"]): mode is FarmActionMode {
+  return mode === "field" || mode === "room" || mode === "stable" || mode === "fence" || mode === "sow" || mode === "animal";
+}
+
+function choiceHasExecutableDirectEffect(choice: ActionEffectChoice): boolean {
+  if (choice.disabled) return false;
+  if (choice.childChoices.length > 0) return choice.childChoices.some((child) => choiceHasExecutableDirectEffect(child));
+  return directEffectTypes.has(choice.type) || choice.type === "buyMajorImprovement";
+}
+
+function findChoiceById(choices: ActionEffectChoice[], id: string): ActionEffectChoice | undefined {
+  for (const choice of choices) {
+    if (choice.id === id) return choice;
+    const child = findChoiceById(choice.childChoices, id);
+    if (child) return child;
+  }
+  return undefined;
+}
+
+function findChoiceByType(choices: ActionEffectChoice[], type: string): ActionEffectChoice | undefined {
+  for (const choice of choices) {
+    if (choice.type === type) return choice;
+    const child = findChoiceByType(choice.childChoices, type);
+    if (child) return child;
+  }
+  return undefined;
+}
+
+function getActiveLeafChoice(choice: ActionEffectChoice | undefined, selectedNestedIds: string[]): ActionEffectChoice | undefined {
+  if (!choice) return undefined;
+  if (choice.childChoices.length === 0) return choice;
+  return selectedNestedIds.map((id) => findChoiceById(choice.childChoices, id)).find((item): item is ActionEffectChoice => Boolean(item)) ?? choice.childChoices.find((item) => !item.disabled);
+}
+
+function selectedChoicesToTypes(choices: ActionEffectChoice[], selectedIds: string[], selectedNestedIds: string[]): string[] {
+  return selectedChoicesToIds(choices, selectedIds, selectedNestedIds)
+    .map((id) => findChoiceById(choices, id)?.type)
+    .filter((type): type is string => Boolean(type));
+}
+
+function selectedChoicesToIds(choices: ActionEffectChoice[], selectedIds: string[], selectedNestedIds: string[]): string[] {
+  return selectedIds.flatMap((id) => {
+    const choice = findChoiceById(choices, id);
+    if (!choice) return [];
+    if (choice.childChoices.length === 0) return [choice.id];
+    const selectedChildren = selectedNestedIds.filter((childId) => Boolean(findChoiceById(choice.childChoices, childId)));
+    if (selectedChildren.length > 0) return selectedChildren;
+    const fallback = choice.childChoices.find((child) => !child.disabled);
+    return fallback ? [fallback.id] : [];
+  });
+}
+
+function effectLabel(effect: ActionEffect, actionSpace: ActionSpaceState): string {
+  if (effect.label) return effect.label;
+  if (effect.type === "plowField") return "翻田";
+  if (effect.type === "buildRooms") return "建房";
+  if (effect.type === "buildStables") return "建马厩";
+  if (effect.type === "buildFences") return "建围栏";
+  if (effect.type === "sow") return "播种";
+  if (effect.type === "bakeBread") return "烤面包";
+  if (effect.type === "buyMajorImprovement") return "大设施";
+  if (effect.type === "playMinorImprovementPlaceholder") return "小设施";
+  if (effect.type === "playOccupationPlaceholder") return "职业卡";
+  if (effect.type === "takeStartingPlayer") return "起始玩家";
+  if (effect.type === "takeAccumulated") return actionSpace.name;
+  if (effect.type === "gainResource") return actionSpace.name;
+  if (effect.type === "gainAnimal") return effect.animal ? translateAnimal(effect.animal) : "动物";
+  if (effect.type === "gainMissingAnimal") return "没有的动物";
+  if (effect.type === "buildingSupplies") return "建筑资源";
+  if (effect.type === "farmingSupplies") return "农耕补给";
+  if (effect.type === "sideJob") return "副业";
+  if (effect.type === "familyGrowth") return "生孩子";
+  if (effect.type === "renovate") return "翻修";
+  return effect.type;
+}
+
+function effectLabelForType(type: string): string {
+  if (type === "takeAccumulated") return "拿取积累资源";
+  if (type === "gainResource") return "获得资源";
+  if (type === "takeStartingPlayer") return "起始玩家";
+  if (type === "familyGrowth") return "生孩子";
+  if (type === "renovate") return "翻修";
+  if (type === "buildingSupplies") return "建筑资源";
+  if (type === "buyMajorImprovement") return "大设施";
+  return type;
+}
+
+function choiceHint(choice: ActionEffectChoice): string {
+  const effect = choice.effect;
+  if (effect.type === "gainAnimal" && effect.foodDelta) {
+    return effect.foodDelta > 0 ? `获得 ${effect.foodDelta} 食物` : `需要 ${Math.abs(effect.foodDelta)} 食物`;
+  }
+  if (effect.type === "buildingSupplies" && effect.resources) {
+    return `获得${describeResourceBundle(effect.resources)}`;
+  }
+  return choice.disabledReason ?? choice.description ?? "";
+}
+
+function describeResourceBundle(resources: Partial<Record<ResourceIconKey, number>>): string {
+  return Object.entries(resources)
+    .filter((entry): entry is [ResourceIconKey, number] => isIconKey(entry[0]) && entry[1] > 0)
+    .map(([resource, amount]) => `${amount}${resourceLabel(resource)}`)
+    .join("、");
+}
+
+function resourceLabel(resource: ResourceIconKey): string {
+  const labels: Record<ResourceIconKey, string> = {
+    wood: "木材",
+    clay: "黏土",
+    reed: "芦苇",
+    stone: "石头",
+    food: "食物",
+    grain: "谷物",
+    vegetable: "蔬菜",
+    begging: "乞讨",
+    starting: "起始",
+    sheep: "羊",
+    boar: "野猪",
+    cattle: "牛",
+    house: "房屋",
+    field: "田地",
+    pasture: "牧场",
+    fence: "围栏",
+    family: "家庭成员",
+    stable: "马厩",
+  };
+  return labels[resource];
+}
+
+function actionLeadText(actionSpace: ActionSpaceState, choice?: ActionEffectChoice, fallback?: string): string {
+  if (actionSpace.prerequisites.length > 0) return `条件：${actionSpace.prerequisites.join("；")}`;
+  if (choice?.description) return choice.description;
+  if (fallback) return fallback;
+  return actionSpace.rules[0] ?? actionSpace.restrictions[0] ?? "确认后执行当前选择的行动。";
+}
+
+function pickAnimalFromChoice(choice: ActionEffectChoice | undefined): FarmAnimalType | null {
+  const effect = choice?.effect;
+  return effect?.type === "gainAnimal" ? effect.animal : null;
+}
+
+function findAnimalChoice(choices: ActionEffectChoice[], animal: FarmAnimalType): ActionEffectChoice | undefined {
+  return choices.find((choice) => pickAnimalFromChoice(choice) === animal);
+}
+
+function getAvailableAnimals(choice: ActionEffectChoice | undefined, parentChoice: ActionEffectChoice | undefined, actionSpace: ActionSpaceState): FarmAnimalType[] {
+  const selectedAnimal = pickAnimalFromChoice(choice);
+  if (selectedAnimal) return [selectedAnimal];
+  const childAnimals = parentChoice?.childChoices
+    .map((child) => pickAnimalFromChoice(child))
+    .filter((animal): animal is FarmAnimalType => Boolean(animal));
+  if (childAnimals?.length) return childAnimals;
+  const actionAnimal = pickAnimal(actionSpace);
+  return actionAnimal ? [actionAnimal] : (["sheep", "boar", "cattle"] as FarmAnimalType[]);
+}
+
 function createDirectActionInput(actionSpace: ActionSpaceState): ActionInput {
-  const selectable = flattenEffects(actionSpace.effects).map((effect) => effect.type).filter((type) => !isUnavailableCardEffect(type));
-  return selectable.length > 0 ? { selectedEffectTypes: selectable } : {};
+  const choices = getActionEffectChoices(actionSpace).filter((choice) => !choice.disabled);
+  const selected = choices.filter((choice) => directEffectTypes.has(choice.type) || choice.type === "buyMajorImprovement").map((choice) => choice.type);
+  const selectedIds = choices.filter((choice) => directEffectTypes.has(choice.type) || choice.type === "buyMajorImprovement").map((choice) => choice.id);
+  return selected.length > 0 ? { selectedEffectTypes: selected, selectedEffectIds: selectedIds } : {};
 }
 
 function animateActionResources(actionSpace: ActionSpaceState, sourceElement: HTMLElement, playerId: string): void {
@@ -186,13 +582,13 @@ function isIconKey(value: string): value is ResourceIconKey {
   return value in RESOURCE_ICONS;
 }
 
-function ConfirmActionOverlay({ actionName, onCancel, onConfirm }: { actionName: string; onCancel: () => void; onConfirm: () => void }) {
+function ConfirmActionOverlay({ actionSpace, onCancel, onConfirm }: { actionSpace: ActionSpaceState; onCancel: () => void; onConfirm: () => void }) {
   return (
     <div className="modal-layer" role="dialog" aria-modal="true">
       <section className="game-modal">
         <span className="game-modal__eyebrow">派遣工人</span>
-        <h2>{actionName}</h2>
-        <p>确认派遣工人执行这个行动吗？</p>
+        <h2>{actionSpace.name}</h2>
+        <p>{actionLeadText(actionSpace)}</p>
         <footer className="game-modal__actions">
           <button className="secondary-button" onClick={onCancel}>取消</button>
           <button onClick={onConfirm}>确认执行</button>
@@ -217,46 +613,151 @@ function FarmActionOverlay({
   onConfirm: (input: ActionInput) => void;
   player: PlayerState;
 }) {
-  const effectTypes = useMemo(() => flattenEffects(actionSpace.effects).map((effect) => effect.type), [actionSpace]);
-  const mode = pickFarmMode(effectTypes, actionSpace);
+  const choices = useMemo(() => getActionEffectChoices(actionSpace, player), [actionSpace, player]);
+  const choiceMode = getActionChoiceMode(actionSpace);
+  const initialSelectedEffects = useMemo(() => initialSelectedEffectIds(choices, choiceMode), [choices, choiceMode]);
+  const [selectedEffectIds, setSelectedEffectIds] = useState<string[]>(initialSelectedEffects);
+  const activeEffectChoice =
+    selectedEffectIds.map((id) => findChoiceById(choices, id)).find((choice): choice is ActionEffectChoice => Boolean(choice && isFarmChoiceMode(choice.mode))) ??
+    selectedEffectIds.map((id) => findChoiceById(choices, id)).find((choice): choice is ActionEffectChoice => Boolean(choice)) ??
+    choices.find((choice) => !choice.disabled) ??
+    choices[0];
+  const [editingEffectId, setEditingEffectId] = useState(activeEffectChoice?.id ?? "");
+  const effectiveEditingChoice = selectedEffectIds.includes(editingEffectId) ? findChoiceById(choices, editingEffectId) ?? activeEffectChoice : activeEffectChoice;
+  const nestedChoiceMode = effectiveEditingChoice?.type === "chooseAny" ? "any" : "one";
+  const [selectedNestedEffectIds, setSelectedNestedEffectIds] = useState<string[]>(
+    effectiveEditingChoice?.childChoices?.length ? initialSelectedEffectIds(effectiveEditingChoice.childChoices, nestedChoiceMode) : [],
+  );
+  const activeLeafChoice = getActiveLeafChoice(effectiveEditingChoice, selectedNestedEffectIds);
+  const activeChoiceUiMode = activeLeafChoice?.mode ?? effectiveEditingChoice?.mode ?? "unsupported";
+  const needsFarmPicker = isFarmChoiceMode(activeChoiceUiMode);
+  const selectedEffectTypes = selectedChoicesToTypes(choices, selectedEffectIds, selectedNestedEffectIds);
+  const selectedFinalEffectIds = selectedChoicesToIds(choices, selectedEffectIds, selectedNestedEffectIds);
+  const mode = needsFarmPicker ? pickFarmModeForEffect(activeLeafChoice?.effect ?? effectiveEditingChoice?.effect, actionSpace) : "field";
   const animalAmount = pickAnimalAmount(actionSpace);
-  const initialAnimal = pickAnimal(actionSpace) ?? "sheep";
-  const availableAnimals = pickAnimal(actionSpace) ? [initialAnimal] : (["sheep", "boar", "cattle"] as FarmAnimalType[]);
-  const [selectedCells, setSelectedCells] = useState<Array<{ row: number; col: number }>>([]);
+  const initialAnimal = pickAnimalFromChoice(activeLeafChoice) ?? pickAnimal(actionSpace) ?? "sheep";
+  const availableAnimals = getAvailableAnimals(activeLeafChoice, effectiveEditingChoice, actionSpace);
+  const [fieldCells, setFieldCells] = useState<Array<{ row: number; col: number }>>([]);
+  const [roomCells, setRoomCells] = useState<Array<{ row: number; col: number }>>([]);
+  const [stableCells, setStableCells] = useState<Array<{ row: number; col: number }>>([]);
+  const [sowCells, setSowCells] = useState<Array<{ row: number; col: number }>>([]);
   const [selectedSegments, setSelectedSegments] = useState<FenceSegment[]>([]);
   const [crop, setCrop] = useState<"grain" | "vegetable">("grain");
   const [animal, setAnimal] = useState<FarmAnimalType>(initialAnimal);
   const [animalPlacements, setAnimalPlacements] = useState<AnimalPlacementInput["placements"]>([]);
   const [cookedAnimals, setCookedAnimals] = useState(0);
+  const bakeOptions = useMemo(() => getBakeOptions(player), [player]);
+  const [bakeImprovementId, setBakeImprovementId] = useState<string>(() => bakeOptions[0]?.id ?? "");
+  const [bakeGrain, setBakeGrain] = useState(1);
+  const [sideJobBakeEnabled, setSideJobBakeEnabled] = useState(false);
 
   const availableFenceSlots = Math.max(0, 15 - (player.farm.fencesUsed ?? player.farm.fences.length));
-  const roomCost = calculateRoomCost(player, selectedCells.length);
+  const roomCost = calculateRoomCost(player, roomCells.length);
   const discardAnimals = Math.max(0, animalAmount - sumPlacements(animalPlacements) - cookedAnimals);
-  const input = createFarmActionInput(mode, effectTypes, selectedCells, selectedSegments, crop, animal, animalPlacements, cookedAnimals, discardAnimals);
-  const selectedGrainCells = mode === "sow" && crop === "grain" ? selectedCells.length : 0;
-  const selectedVegetableCells = mode === "sow" && crop === "vegetable" ? selectedCells.length : 0;
-  const canConfirm =
-    mode === "fence"
-      ? selectedSegments.length > 0 && selectedSegments.length <= player.resources.wood && selectedSegments.length <= availableFenceSlots
-      : mode === "animal"
-        ? sumPlacements(animalPlacements) + cookedAnimals <= animalAmount
-        : mode === "sow"
-          ? selectedCells.length > 0 && selectedGrainCells <= player.resources.grain && selectedVegetableCells <= player.resources.vegetable
-          : mode === "room"
-            ? selectedCells.length > 0 && canPayRoomCost(player, selectedCells.length)
-            : selectedCells.length > 0;
+  const activeBakeOption = bakeOptions.find((option) => option.id === bakeImprovementId) ?? bakeOptions[0] ?? null;
+  const bakeMaxGrain = activeBakeOption ? (activeBakeOption.grainLimit === null ? player.resources.grain : Math.min(player.resources.grain, activeBakeOption.grainLimit)) : 0;
+  const bakeEnabled = selectedEffectTypes.includes("bakeBread") || (selectedEffectTypes.includes("sideJob") && sideJobBakeEnabled);
+  const displayedBakeGrain = bakeEnabled ? bakeGrain : 0;
+  const displayedBakeFood = activeBakeOption ? displayedBakeGrain * activeBakeOption.foodPerGrain : 0;
+  const showBakePanel = selectedEffectTypes.includes("bakeBread") || selectedEffectTypes.includes("sideJob");
+  const input = createFarmActionInput(
+    selectedEffectTypes,
+    selectedFinalEffectIds,
+    fieldCells,
+    roomCells,
+    stableCells,
+    sowCells,
+    selectedSegments,
+    crop,
+    animal,
+    animalPlacements,
+    bakeImprovementId,
+    bakeGrain,
+    bakeEnabled,
+    cookedAnimals,
+    discardAnimals,
+  );
+  const selectedGrainCells = selectedEffectTypes.includes("sow") && crop === "grain" ? sowCells.length : 0;
+  const selectedVegetableCells = selectedEffectTypes.includes("sow") && crop === "vegetable" ? sowCells.length : 0;
+  const canConfirm = selectedEffectTypes.length > 0 && selectedEffectTypes.every((type) => isSelectedEffectReady(type, player, input, availableFenceSlots));
+
+  useEffect(() => {
+    if (bakeOptions.length === 0) {
+      setBakeImprovementId("");
+      setBakeGrain(0);
+      return;
+    }
+    if (!bakeOptions.some((option) => option.id === bakeImprovementId)) {
+      setBakeImprovementId(bakeOptions[0].id);
+      setBakeGrain(1);
+    }
+  }, [bakeOptions, bakeImprovementId]);
+
+  useEffect(() => {
+    if (!activeBakeOption) return;
+    setBakeGrain((current) => clampNumber(current <= 0 ? 1 : current, 0, bakeMaxGrain));
+  }, [activeBakeOption, bakeMaxGrain]);
+
+  function toggleEffectId(id: string) {
+    const choice = choices.find((item) => item.id === id);
+    if (!choice || choice.disabled) return;
+    setSelectedEffectIds((current) => {
+      if (choiceMode === "one") {
+        setEditingEffectId(id);
+        resetNestedChoices(choice);
+        return [id];
+      }
+      const exists = current.includes(id);
+      const next = exists ? current.filter((item) => item !== id) : [...current, id];
+      if (!exists) {
+        setEditingEffectId(id);
+        resetNestedChoices(choice);
+      }
+      return next;
+    });
+  }
+
+  function resetNestedChoices(choice: ActionEffectChoice) {
+    const mode = choice.type === "chooseAny" ? "any" : "one";
+    const nestedIds = choice.childChoices.length ? initialSelectedEffectIds(choice.childChoices, mode) : [];
+    setSelectedNestedEffectIds(nestedIds);
+    const nestedChoice = nestedIds.length > 0 ? findChoiceById(choice.childChoices, nestedIds[0]) : undefined;
+    setAnimal(pickAnimalFromChoice(nestedChoice) ?? pickAnimalFromChoice(choice) ?? animal);
+    setAnimalPlacements([]);
+    setCookedAnimals(0);
+  }
+
+  function toggleNestedEffectId(id: string) {
+    if (!effectiveEditingChoice) return;
+    const choice = effectiveEditingChoice.childChoices.find((item) => item.id === id);
+    if (!choice || choice.disabled) return;
+    setSelectedNestedEffectIds((current) => {
+      if (nestedChoiceMode === "one") {
+        setAnimal(pickAnimalFromChoice(choice) ?? animal);
+        setAnimalPlacements([]);
+        setCookedAnimals(0);
+        return [id];
+      }
+      const exists = current.includes(id);
+      return exists ? current.filter((item) => item !== id) : [...current, id];
+    });
+  }
 
   function toggleCell(row: number, col: number) {
     const key = `${row}:${col}`;
-    setSelectedCells((current) => {
+    const update = (current: Array<{ row: number; col: number }>, single = false) => {
       if (current.some((cell) => `${cell.row}:${cell.col}` === key)) {
         return current.filter((cell) => `${cell.row}:${cell.col}` !== key);
       }
-      if (mode === "field") {
+      if (single) {
         return [{ row, col }];
       }
       return [...current, { row, col }];
-    });
+    };
+    if (mode === "field") setFieldCells((current) => update(current, true));
+    if (mode === "room") setRoomCells((current) => update(current));
+    if (mode === "stable") setStableCells((current) => update(current));
+    if (mode === "sow") setSowCells((current) => update(current));
   }
 
   function toggleSegment(segment: FenceSegment) {
@@ -283,75 +784,195 @@ function FarmActionOverlay({
       <section className="game-modal farm-action-modal">
         <span className="game-modal__eyebrow">农场行动</span>
         <h2>{actionSpace.name}</h2>
-        <p>{farmActionHelp(mode)}</p>
-        {mode === "sow" ? (
+        <p>{actionLeadText(actionSpace, activeLeafChoice ?? effectiveEditingChoice, needsFarmPicker ? farmActionHelp(mode) : undefined)}</p>
+        {choices.length > 1 ? (
+          <div className={`effect-choice-row effect-choice-row--${choiceMode}`}>
+            {choices.map((choice) => {
+              const active = selectedEffectIds.includes(choice.id);
+              return (
+                <button
+                  key={choice.id}
+                  type="button"
+                  className={`${active ? "active" : ""} ${effectiveEditingChoice?.id === choice.id ? "editing" : ""}`}
+                  disabled={choice.disabled}
+                  title={choice.disabledReason}
+                  onClick={() => toggleEffectId(choice.id)}
+                  onDoubleClick={() => active && setEditingEffectId(choice.id)}
+                >
+                  {choice.label}
+                  <small>{choiceHint(choice)}</small>
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+        {effectiveEditingChoice?.childChoices.length ? (
+          <div className={`effect-choice-row effect-choice-row--nested effect-choice-row--${nestedChoiceMode}`}>
+            {effectiveEditingChoice.childChoices.map((choice) => {
+              const active = selectedNestedEffectIds.includes(choice.id);
+              return (
+                <button
+                  key={choice.id}
+                  type="button"
+                  className={active ? "active" : ""}
+                  disabled={choice.disabled}
+                  title={choice.disabledReason}
+                  onClick={() => toggleNestedEffectId(choice.id)}
+                >
+                  {choice.label}
+                  <small>{choiceHint(choice)}</small>
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+        {showBakePanel ? (
+          <div className="bake-panel">
+            <div className="bake-panel__header">
+              <strong>烤面包</strong>
+              {activeBakeOption ? (
+                <span>
+                  当前大设施：{activeBakeOption.name}，每个谷物 → {activeBakeOption.foodPerGrain} 食物{activeBakeOption.grainLimit === null ? "，不限数量" : `，最多 ${activeBakeOption.grainLimit} 个`}
+                </span>
+              ) : (
+                <span className="muted">没有可烤面包的大设施</span>
+              )}
+            </div>
+            {selectedEffectTypes.includes("sideJob") ? (
+              <label className="bake-panel__toggle">
+                <input disabled={!activeBakeOption} type="checkbox" checked={sideJobBakeEnabled && Boolean(activeBakeOption)} onChange={(event) => setSideJobBakeEnabled(event.target.checked)} />
+                <span>同时烤面包</span>
+              </label>
+            ) : null}
+            <div className="bake-panel__options">
+              {bakeOptions.length > 1
+                ? bakeOptions.map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      className={option.id === bakeImprovementId ? "active" : ""}
+                      onClick={() => {
+                        setBakeImprovementId(option.id);
+                        setBakeGrain((current) => clampNumber(current <= 0 ? 1 : current, 0, option.grainLimit === null ? player.resources.grain : Math.min(player.resources.grain, option.grainLimit)));
+                      }}
+                    >
+                      {option.name}
+                      <small>
+                        <RESOURCE_ICONS.grain size={14} /> × 1 → <RESOURCE_ICONS.food size={14} /> × {option.foodPerGrain}
+                        {option.grainLimit === null ? "，可重复" : `，最多 ${option.grainLimit}`}
+                      </small>
+                    </button>
+                  ))
+                : bakeOptions.length === 1
+                  ? (
+                    <div className="bake-panel__current">
+                      <RESOURCE_ICONS.grain size={16} /> {activeBakeOption?.name}
+                    </div>
+                  )
+                  : <div className="bake-panel__empty">没有可用的大设施</div>}
+            </div>
+            <label className="bake-panel__input">
+              <span>
+                <RESOURCE_ICONS.grain size={18} /> 烤制谷物
+                <small>剩余 {player.resources.grain} 个</small>
+              </span>
+              <input
+                disabled={!activeBakeOption || !bakeEnabled}
+                max={bakeMaxGrain}
+                min="0"
+                type="number"
+                value={bakeGrain}
+                onChange={(event) => setBakeGrain(clampNumber(Number(event.target.value), 0, bakeMaxGrain))}
+              />
+            </label>
+            <div className="bake-panel__summary">
+              <span>
+                <RESOURCE_ICONS.grain size={16} /> × {displayedBakeGrain}
+              </span>
+              <span className="major-facility-arrow">→</span>
+              <span>
+                <RESOURCE_ICONS.food size={16} /> × {displayedBakeFood}
+              </span>
+            </div>
+          </div>
+        ) : null}
+        {needsFarmPicker && mode === "sow" ? (
           <div className="segmented">
             <button className={crop === "grain" ? "active" : ""} onClick={() => setCrop("grain")}>谷物 {player.resources.grain}</button>
             <button className={crop === "vegetable" ? "active" : ""} onClick={() => setCrop("vegetable")}>蔬菜 {player.resources.vegetable}</button>
           </div>
         ) : null}
-        {mode === "animal" ? (
+        {needsFarmPicker && mode === "animal" ? (
           <div className="segmented">
-            {availableAnimals.map((item) => (
-              <button
-                key={item}
-                className={animal === item ? "active" : ""}
-                onClick={() => {
-                  setAnimal(item);
-                  setAnimalPlacements([]);
-                  setCookedAnimals(0);
-                }}
-              >
-                {translateAnimal(item)} x {animalAmount}
-              </button>
-            ))}
-          </div>
-        ) : null}
-        {mode === "room" ? (
-          <div className="room-cost-panel">
-            <span>木屋：每间 5 木材 + 2 芦苇</span>
-            <span>黏土房：每间 5 黏土 + 2 芦苇</span>
-            <span>石屋：每间 5 石头 + 2 芦苇</span>
-          </div>
-        ) : null}
-        <div className={`farm-picker farm-picker--${mode}`}>
-          {Array.from({ length: 3 }, (_, row) =>
-            Array.from({ length: 5 }, (_, col) => {
-              const cell = player.farm.cells.find((candidate) => candidate.row === row && candidate.col === col);
-              const selected = selectedCells.some((item) => item.row === row && item.col === col);
-              const valid = mode === "fence" || isCellValidForMode(mode, cell, player, selectedCells);
-              const animalTarget = mode === "animal" ? getAnimalTarget(player, row, col, animal) : null;
-              const animalSelected = animalTarget ? animalPlacements.some((item) => placementKey(item) === placementKey(animalTarget.placement)) : false;
+            {availableAnimals.map((item) => {
+              const animalChoice = findAnimalChoice(effectiveEditingChoice?.childChoices ?? choices, item);
               return (
                 <button
-                  key={`${row}-${col}`}
-                  className={`farm-picker__cell ${selected || animalSelected ? "selected" : ""} ${valid || animalTarget ? "" : "invalid"}`}
-                  disabled={mode !== "fence" && !valid && !animalTarget}
+                  key={item}
+                  className={animal === item ? "active" : ""}
+                  disabled={animalChoice?.disabled}
+                  title={animalChoice?.disabledReason}
                   onClick={() => {
-                    if (mode === "fence") return;
-                    if (mode === "animal" && animalTarget) {
-                      toggleAnimalPlacement(animalTarget.placement, animalTarget.capacity);
-                      return;
-                    }
-                    toggleCell(row, col);
+                    setAnimal(item);
+                    setAnimalPlacements([]);
+                    setCookedAnimals(0);
                   }}
-                  type="button"
                 >
-                  <strong>{mode === "animal" && animalTarget ? animalTarget.label : cellLabel(cell, player)}</strong>
-                  <small>{col},{row}</small>
+                  {translateAnimal(item)} × {animalAmount}
+                  {animalChoice ? <small>{choiceHint(animalChoice)}</small> : null}
                 </button>
               );
-            }),
-          )}
-          {mode === "fence" ? (
-            <FenceStickPickerLayer
-              player={player}
-              selectedSegments={selectedSegments}
-              onToggle={toggleSegment}
-            />
-          ) : null}
-        </div>
-        {mode === "animal" ? (
+            })}
+          </div>
+        ) : null}
+        {needsFarmPicker && mode === "room" ? (
+          <div className="room-cost-panel">
+            <span>木屋：每间 5 木材 + 2 芦苇</span>
+            <span>瓦房：每间 5 黏土 + 2 芦苇</span>
+            <span>石头房：每间 5 石头 + 2 芦苇</span>
+          </div>
+        ) : null}
+        {needsFarmPicker ? (
+          <div className={`farm-picker farm-picker--${mode}`}>
+            {Array.from({ length: 3 }, (_, row) =>
+              Array.from({ length: 5 }, (_, col) => {
+                const cell = player.farm.cells.find((candidate) => candidate.row === row && candidate.col === col);
+                const cellsForMode = getCellsForMode(mode, fieldCells, roomCells, stableCells, sowCells);
+                const selected = cellsForMode.some((item) => item.row === row && item.col === col);
+                const valid = mode === "fence" || isCellValidForMode(mode, cell, player, cellsForMode);
+                const animalTarget = mode === "animal" ? getAnimalTarget(player, row, col, animal) : null;
+                const animalSelected = animalTarget ? animalPlacements.some((item) => placementKey(item) === placementKey(animalTarget.placement)) : false;
+                return (
+                  <button
+                    key={`${row}-${col}`}
+                    className={`farm-picker__cell ${selected || animalSelected ? "selected" : ""} ${valid || animalTarget ? "" : "invalid"}`}
+                    disabled={mode !== "fence" && !valid && !animalTarget}
+                    onClick={() => {
+                      if (mode === "fence") return;
+                      if (mode === "animal" && animalTarget) {
+                        toggleAnimalPlacement(animalTarget.placement, animalTarget.capacity);
+                        return;
+                      }
+                      toggleCell(row, col);
+                    }}
+                    type="button"
+                  >
+                    <strong>{mode === "animal" && animalTarget ? animalTarget.label : cellLabel(cell, player)}</strong>
+                    <small>{col},{row}</small>
+                  </button>
+                );
+              }),
+            )}
+            {mode === "fence" ? (
+              <FenceStickPickerLayer
+                player={player}
+                selectedSegments={selectedSegments}
+                onToggle={toggleSegment}
+              />
+            ) : null}
+          </div>
+        ) : null}
+        {needsFarmPicker && mode === "animal" ? (
           <div className="animal-placement-panel">
             <button
               className="secondary-button"
@@ -367,13 +988,15 @@ function FarmActionOverlay({
           </div>
         ) : null}
         <div className="farm-action-summary">
-          {mode === "fence"
+          {!needsFarmPicker
+            ? `将执行：${selectedEffectTypes.map((type) => effectLabelForType(type)).join("、") || actionSpace.name}。`
+            : mode === "fence"
             ? `选择围栏 ${selectedSegments.length} 条，消耗 ${selectedSegments.length} 木材；当前木材 ${player.resources.wood}，剩余围栏 ${availableFenceSlots}。`
             : mode === "room"
-              ? `已选择 ${selectedCells.length} 间；本次需要 ${translateRoomMaterial(player.farm.roomMaterial)} ${roomCost.material}、芦苇 ${roomCost.reed}。库存：${translateRoomMaterial(player.farm.roomMaterial)} ${roomCost.availableMaterial}、芦苇 ${player.resources.reed}。`
+              ? `已选择 ${roomCells.length} 间；本次需要 ${translateRoomMaterial(player.farm.roomMaterial)} ${roomCost.material}、芦苇 ${roomCost.reed}。库存：${translateRoomMaterial(player.farm.roomMaterial)} ${roomCost.availableMaterial}、芦苇 ${player.resources.reed}。`
               : mode === "animal"
               ? `获得 ${translateAnimal(animal)} ${animalAmount} 只。未安置的动物会被丢弃，拥有炉灶时可做成食物。`
-              : `已选择 ${selectedCells.length} 格。`}
+              : `已选择 ${getCellsForMode(mode, fieldCells, roomCells, stableCells, sowCells).length} 格。`}
         </div>
         <footer className="game-modal__actions">
           <button className="secondary-button" onClick={onCancel}>取消</button>
@@ -384,46 +1007,85 @@ function FarmActionOverlay({
   );
 }
 
-function pickFarmMode(effectTypes: string[], actionSpace: ActionSpaceState): FarmActionMode {
+function pickFarmModeForEffect(effect: ActionEffect | undefined, actionSpace: ActionSpaceState): FarmActionMode {
   if (hasAccumulatedAnimal(actionSpace)) return "animal";
-  if (effectTypes.includes("buildFences")) return "fence";
-  if (effectTypes.includes("sow")) return "sow";
-  if (effectTypes.includes("buildRooms")) return "room";
-  if (effectTypes.includes("buildStables") || effectTypes.includes("sideJob")) return "stable";
-  if (effectTypes.includes("gainAnimal") || effectTypes.includes("gainMissingAnimal")) return "animal";
+  if (effect?.type === "buildFences") return "fence";
+  if (effect?.type === "sow") return "sow";
+  if (effect?.type === "buildRooms") return "room";
+  if (effect?.type === "buildStables" || effect?.type === "sideJob") return "stable";
+  if (effect?.type === "gainAnimal" || effect?.type === "gainMissingAnimal") return "animal";
   return "field";
 }
 
 function createFarmActionInput(
-  mode: FarmActionMode,
-  effectTypes: string[],
-  cells: Array<{ row: number; col: number }>,
+  selectedEffectTypes: string[],
+  selectedEffectIds: string[],
+  fieldCells: Array<{ row: number; col: number }>,
+  roomCells: Array<{ row: number; col: number }>,
+  stableCells: Array<{ row: number; col: number }>,
+  sowCells: Array<{ row: number; col: number }>,
   segments: FenceSegment[],
   crop: "grain" | "vegetable",
   animal: FarmAnimalType,
   placements: AnimalPlacementInput["placements"],
+  bakeImprovementId: string,
+  bakeGrain: number,
+  bakeEnabled: boolean,
   cooked: number,
   discarded: number,
 ): ActionInput {
-  const selectedEffectTypes = effectTypes.filter((type) => {
-    if (mode === "field") return type === "plowField";
-    if (mode === "room") return type === "buildRooms";
-    if (mode === "stable") return type === "buildStables" || type === "sideJob";
-    if (mode === "fence") return type === "buildFences";
-    if (mode === "sow") return type === "sow";
-    if (mode === "animal") return type === "gainAnimal" || type === "gainMissingAnimal";
-    return false;
-  });
   return {
     selectedEffectTypes,
-    fieldCell: cells[0],
-    roomCells: mode === "room" ? cells : undefined,
-    stableCells: mode === "stable" ? cells : undefined,
-    fenceSegments: mode === "fence" ? segments : undefined,
-    sow: mode === "sow" ? [{ crop, cells }] : undefined,
+    selectedEffectIds,
+    fieldCell: selectedEffectTypes.includes("plowField") ? fieldCells[0] : undefined,
+    roomCells: selectedEffectTypes.includes("buildRooms") ? roomCells : undefined,
+    stableCells: selectedEffectTypes.includes("buildStables") || selectedEffectTypes.includes("sideJob") ? stableCells : undefined,
+    fenceSegments: selectedEffectTypes.includes("buildFences") ? segments : undefined,
+    sow: selectedEffectTypes.includes("sow") ? [{ crop, cells: sowCells }] : undefined,
     animalChoice: animal,
-    animalPlacement: mode === "animal" ? { animal, placements, cooked, discarded } : undefined,
+    animalPlacement: selectedEffectTypes.includes("gainAnimal") || selectedEffectTypes.includes("gainMissingAnimal") ? { animal, placements, cooked, discarded } : undefined,
+    bake: (selectedEffectTypes.includes("bakeBread") || (selectedEffectTypes.includes("sideJob") && bakeEnabled)) && bakeImprovementId && bakeGrain > 0 ? { improvementId: bakeImprovementId, grain: bakeGrain } : undefined,
   };
+}
+
+function getCellsForMode(
+  mode: FarmActionMode,
+  fieldCells: Array<{ row: number; col: number }>,
+  roomCells: Array<{ row: number; col: number }>,
+  stableCells: Array<{ row: number; col: number }>,
+  sowCells: Array<{ row: number; col: number }>,
+) {
+  if (mode === "field") return fieldCells;
+  if (mode === "room") return roomCells;
+  if (mode === "stable") return stableCells;
+  if (mode === "sow") return sowCells;
+  return [];
+}
+
+function isSelectedEffectReady(type: string, player: PlayerState, input: ActionInput, availableFenceSlots: number): boolean {
+  if (type === "plowField") return Boolean(input.fieldCell);
+  if (type === "buildRooms") {
+    const roomCells = input.roomCells ?? [];
+    return roomCells.length > 0 && canPayRoomCost(player, roomCells.length);
+  }
+  if (type === "buildStables") return Boolean(input.stableCells?.length);
+  if (type === "buildFences") {
+    const fenceSegments = input.fenceSegments ?? [];
+    return fenceSegments.length > 0 && fenceSegments.length <= player.resources.wood && fenceSegments.length <= availableFenceSlots;
+  }
+  if (type === "sow") {
+    const sow = input.sow?.[0];
+    if (!sow || sow.cells.length <= 0) return false;
+    return sow.crop === "grain" ? sow.cells.length <= player.resources.grain : sow.cells.length <= player.resources.vegetable;
+  }
+  if (type === "gainAnimal" || type === "gainMissingAnimal") {
+    return Boolean(input.animalPlacement);
+  }
+  if (type === "buyMajorImprovement") return Boolean(input.majorImprovementId);
+  if (type === "farmingSupplies") return Boolean((input.farmingSupplies?.grainTrades ?? 0) > 0 || input.farmingSupplies?.fieldTrades?.length);
+  if (type === "bakeBread") return isValidBakeInput(player, input.bake);
+  if (type === "sideJob") return Boolean(input.stableCells?.length || isValidBakeInput(player, input.bake));
+  return true;
 }
 
 function isCellValidForMode(
@@ -541,6 +1203,39 @@ function sumPlacements(placements: AnimalPlacementInput["placements"]): number {
 
 function canCookAnimal(player: PlayerState): boolean {
   return player.majorImprovements.some((id) => id.startsWith("fireplace") || id.startsWith("cooking-hearth"));
+}
+
+function canBakeBread(player: PlayerState): boolean {
+  return player.majorImprovements.some((id) => id.startsWith("fireplace") || id.startsWith("cooking-hearth") || id === "clay-oven" || id === "stone-oven");
+}
+
+function getBakeOptions(player: PlayerState): Array<{ id: string; name: string; grainLimit: number | null; foodPerGrain: number }> {
+  return player.majorImprovements.flatMap((cardId) => {
+    const card = majorImprovements.find((candidate) => candidate.id === cardId);
+    const effect = card?.effects.find((candidate) => candidate.type === "bakeBread");
+    if (!card || !effect || effect.type !== "bakeBread") {
+      return [];
+    }
+    return [{ id: card.id, name: card.name, grainLimit: effect.grainLimit, foodPerGrain: effect.foodPerGrain }];
+  });
+}
+
+function isValidBakeInput(player: PlayerState, bake?: ActionInput["bake"]): boolean {
+  if (!bake || !bake.improvementId) return false;
+  const option = getBakeOptions(player).find((candidate) => candidate.id === bake.improvementId);
+  if (!option) return false;
+  if (bake.grain <= 0 || bake.grain > player.resources.grain) return false;
+  if (option.grainLimit !== null && bake.grain > option.grainLimit) return false;
+  return true;
+}
+
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
+function firstAvailableMajorImprovementId(game: ReturnType<typeof useGameStore.getState>["game"], playerId?: string | null): string | undefined {
+  if (!game || !playerId) return undefined;
+  return game.majorImprovements.find((card) => !card.purchasedBy)?.id;
 }
 
 function calculateRoomCost(player: PlayerState, roomCount: number) {

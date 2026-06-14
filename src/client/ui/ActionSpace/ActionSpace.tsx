@@ -3,6 +3,7 @@ import { FamilyMemberIcon, RESOURCE_ICONS, type ResourceIconKey } from "../Visua
 
 interface ActionSpaceProps {
   actionSpace: ActionSpaceState;
+  compact?: boolean;
   isInteractive?: boolean;
   occupiedColor?: string;
   onExecute?: (sourceElement: HTMLElement) => void;
@@ -18,10 +19,12 @@ const CATEGORY_LABEL: Record<ActionCategory, string> = {
   improvement: "发展",
 };
 
-export function ActionSpace({ actionSpace, isInteractive = false, occupiedColor = "#3A7AC8", onExecute }: ActionSpaceProps) {
+export function ActionSpace({ actionSpace, compact = false, isInteractive = false, occupiedColor = "#3A7AC8", onExecute }: ActionSpaceProps) {
   const category = getActionCategory(actionSpace);
   const iconType = getActionIcon(actionSpace);
   const Icon = RESOURCE_ICONS[iconType];
+  const ruleItems = getActionCardItems(actionSpace);
+  const actionSummary = getActionSummary(actionSpace);
   const accumulated = Object.entries(actionSpace.accumulated).filter((entry): entry is [ResourceIconKey, number] =>
     isResourceIcon(entry[0]) && entry[1] > 0,
   );
@@ -31,7 +34,7 @@ export function ActionSpace({ actionSpace, isInteractive = false, occupiedColor 
 
   return (
     <button
-      className={`action-card action-card--${variant} action-card--${category} ${isInteractive ? "action-card--interactive" : ""}`}
+      className={`action-card action-card--${variant} action-card--${category} ${compact ? "action-card--compact" : ""} ${isInteractive ? "action-card--interactive" : ""}`}
       type="button"
       onClick={(event) => onExecute?.(event.currentTarget)}
     >
@@ -46,7 +49,7 @@ export function ActionSpace({ actionSpace, isInteractive = false, occupiedColor 
 
       <div className="action-card__badge-row">
         <span className="action-card__badge">{CATEGORY_LABEL[category]}</span>
-        {actionSpace.prerequisites.length > 0 ? <span className="action-card__tag">条件</span> : null}
+        {actionSpace.prerequisites.length > 0 && !compact ? <span className="action-card__tag">条件</span> : null}
       </div>
 
       <div className="action-card__divider" />
@@ -69,7 +72,11 @@ export function ActionSpace({ actionSpace, isInteractive = false, occupiedColor 
         </div>
       </section>
 
-      <p className="action-card__rule">{actionSpace.rules[0] ?? actionSpace.restrictions[0] ?? "选择后执行该行动格效果。"}</p>
+      <ul className={compact ? "action-card__name-list" : "action-card__rule-list"}>
+        {ruleItems.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
 
       <footer className="action-card__footer">
         {actionSpace.occupiedBy ? (
@@ -82,9 +89,80 @@ export function ActionSpace({ actionSpace, isInteractive = false, occupiedColor 
         ) : (
           <span className="action-card__button">{isInteractive ? "点击执行" : "需要选择"}</span>
         )}
+        <small>{actionSummary}</small>
       </footer>
     </button>
   );
+}
+
+function getActionCardItems(actionSpace: ActionSpaceState): string[] {
+  const actionNames = getActionNameItems(actionSpace);
+  if (actionNames.length > 1) {
+    return [`${choicePrefix(actionSpace)}：${actionNames.join("、")}`];
+  }
+  return [actionNames[0] ?? actionSpace.name];
+}
+
+function getActionNameItems(actionSpace: ActionSpaceState): string[] {
+  const labels = topLevelEffectLabels(actionSpace.effects).filter(Boolean);
+  if (labels.length > 1) {
+    return Array.from(new Set(labels));
+  }
+  return labels.length === 1 && actionSpace.type === "choice" ? labels : [actionSpace.rules[0] ?? actionSpace.name];
+}
+
+function topLevelEffectLabels(effects: ActionSpaceState["effects"]): string[] {
+  if (effects.length === 1) {
+    const [root] = effects;
+    if (root && "effects" in root && root.effects) {
+      return root.effects.map((effect) => effect.label ?? effectTypeLabel(effect.type));
+    }
+  }
+  return effects.map((effect) => effect.label ?? effectTypeLabel(effect.type));
+}
+
+function choicePrefix(actionSpace: ActionSpaceState): string {
+  const root = actionSpace.effects[0];
+  if (actionSpace.effects.length === 1 && root && "effects" in root && root.effects) {
+    if (root.type === "chooseAny") return "可多选";
+    if (root.type === "chooseOne") return `${root.effects.length}选一`;
+  }
+  return `${getActionNameItems(actionSpace).length}选一`;
+}
+
+function getActionSummary(actionSpace: ActionSpaceState): string {
+  const root = actionSpace.effects[0];
+  if (actionSpace.effects.length === 1 && root && "effects" in root && root.effects) {
+    return root.type === "chooseAny" ? "点击后选择要执行的行动。" : "点击后选择其中一个行动。";
+  }
+  if (actionSpace.prerequisites.length > 0) return `条件：${actionSpace.prerequisites[0]}`;
+  if (actionSpace.restrictions.length > 0) return actionSpace.restrictions[0];
+  return actionSpace.rules[1] ?? actionSpace.rules[0] ?? "确认后执行。";
+}
+
+function effectTypeLabel(type: string): string {
+  const labels: Record<string, string> = {
+    takeAccumulated: "拿取资源",
+    gainResource: "获得资源",
+    gainAnimal: "获得动物",
+    plowField: "翻田",
+    buildRooms: "建房",
+    buildStables: "建马厩",
+    buildFences: "建围栏",
+    sow: "播种",
+    bakeBread: "烤面包",
+    buyMajorImprovement: "购买大设施",
+    playOccupationPlaceholder: "打出职业卡",
+    playMinorImprovementPlaceholder: "打出小设施",
+    takeStartingPlayer: "拿起始玩家",
+    renovate: "翻修房屋",
+    familyGrowth: "生孩子",
+    gainMissingAnimal: "增加缺少的动物",
+    buildingSupplies: "建筑补给",
+    farmingSupplies: "农耕补给",
+    sideJob: "副业",
+  };
+  return labels[type] ?? type;
 }
 
 function getActionCategory(actionSpace: ActionSpaceState): ActionCategory {

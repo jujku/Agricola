@@ -4,28 +4,34 @@ export type ResourceKey = "wood" | "clay" | "reed" | "stone" | "grain" | "vegeta
 export type AnimalKey = "sheep" | "boar" | "cattle";
 export type CropKey = "grain" | "vegetable";
 
+export type ActionEffectMeta = {
+  id?: string;
+  label?: string;
+  description?: string;
+};
+
 export type ActionEffect =
-  | { type: "takeAccumulated" }
-  | { type: "gainResource"; resource: ResourceKey; amount: number }
-  | { type: "gainAnimal"; animal: AnimalKey; amount: number }
-  | { type: "plowField" }
-  | { type: "buildRooms" }
-  | { type: "buildStables"; max: number; woodCost: number }
-  | { type: "buildFences" }
-  | { type: "sow" }
-  | { type: "bakeBread" }
-  | { type: "buyMajorImprovement" }
-  | { type: "playOccupationPlaceholder" }
-  | { type: "playMinorImprovementPlaceholder" }
-  | { type: "takeStartingPlayer" }
-  | { type: "renovate"; allowMajorImprovement: boolean }
-  | { type: "familyGrowth"; requiresRoom: boolean; minimumRound?: number }
-  | { type: "chooseOne"; effects: ActionEffect[] }
-  | { type: "chooseAny"; effects: ActionEffect[] }
-  | { type: "gainMissingAnimal" }
-  | { type: "buildingSupplies" }
-  | { type: "farmingSupplies" }
-  | { type: "sideJob" };
+  | (ActionEffectMeta & { type: "takeAccumulated" })
+  | (ActionEffectMeta & { type: "gainResource"; resource: ResourceKey; amount: number })
+  | (ActionEffectMeta & { type: "gainAnimal"; animal: AnimalKey; amount: number; foodDelta?: number })
+  | (ActionEffectMeta & { type: "plowField" })
+  | (ActionEffectMeta & { type: "buildRooms" })
+  | (ActionEffectMeta & { type: "buildStables"; max: number; woodCost: number })
+  | (ActionEffectMeta & { type: "buildFences" })
+  | (ActionEffectMeta & { type: "sow" })
+  | (ActionEffectMeta & { type: "bakeBread" })
+  | (ActionEffectMeta & { type: "buyMajorImprovement" })
+  | (ActionEffectMeta & { type: "playOccupationPlaceholder" })
+  | (ActionEffectMeta & { type: "playMinorImprovementPlaceholder" })
+  | (ActionEffectMeta & { type: "takeStartingPlayer" })
+  | (ActionEffectMeta & { type: "renovate"; allowMajorImprovement: boolean })
+  | (ActionEffectMeta & { type: "familyGrowth"; requiresRoom: boolean; minimumRound?: number })
+  | (ActionEffectMeta & { type: "chooseOne"; effects: ActionEffect[] })
+  | (ActionEffectMeta & { type: "chooseAny"; effects: ActionEffect[] })
+  | (ActionEffectMeta & { type: "gainMissingAnimal" })
+  | (ActionEffectMeta & { type: "buildingSupplies"; resources?: Partial<Record<ResourceKey, number>> })
+  | (ActionEffectMeta & { type: "farmingSupplies" })
+  | (ActionEffectMeta & { type: "sideJob" });
 
 export type ActionDefinition = Omit<ActionSpaceState, "accumulated"> & {
   playerCounts: number[];
@@ -148,8 +154,18 @@ export const baseActions: ActionDefinition[] = [
       {
         type: "chooseAny",
         effects: [
-          { type: "buildRooms" },
-          { type: "buildStables", max: 4, woodCost: 2 },
+          {
+            type: "buildRooms",
+            label: "建房间",
+            description: "新房间必须与已有房间正交相邻；一次可建多个，材料按房间数量支付。",
+          },
+          {
+            type: "buildStables",
+            label: "建马厩",
+            description: "每个马厩消耗2木材；一次最多建4个，每格最多1个。",
+            max: 4,
+            woodCost: 2,
+          },
         ],
       },
     ],
@@ -184,8 +200,8 @@ export const baseActions: ActionDefinition[] = [
       {
         type: "chooseAny",
         effects: [
-          { type: "takeStartingPlayer" },
-          { type: "gainResource", resource: "grain", amount: 1 },
+          { type: "takeStartingPlayer", label: "拿起始玩家", description: "获得起始玩家标记，下回合优先行动。" },
+          { type: "gainResource", label: "获得谷物", description: "获得1个谷物。", resource: "grain", amount: 1 },
         ],
       },
     ],

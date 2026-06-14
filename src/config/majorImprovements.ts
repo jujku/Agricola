@@ -20,7 +20,7 @@ export interface MajorImprovementDefinition {
 export const majorImprovements: MajorImprovementDefinition[] = [
   {
     id: "fireplace-a",
-    name: "壁炉 A",
+    name: "壁炉一",
     cost: { clay: 2 },
     victoryPoints: 1,
     triggers: ["ON_COOK", "ON_BAKE_BREAD"],
@@ -34,7 +34,7 @@ export const majorImprovements: MajorImprovementDefinition[] = [
   },
   {
     id: "fireplace-b",
-    name: "壁炉 B",
+    name: "壁炉二",
     cost: { clay: 3 },
     victoryPoints: 1,
     triggers: ["ON_COOK", "ON_BAKE_BREAD"],
@@ -48,7 +48,7 @@ export const majorImprovements: MajorImprovementDefinition[] = [
   },
   {
     id: "cooking-hearth-a",
-    name: "灶台 A",
+    name: "灶台一",
     cost: { clay: 4 },
     upgradeFrom: ["fireplace-a", "fireplace-b"],
     victoryPoints: 1,
@@ -63,7 +63,7 @@ export const majorImprovements: MajorImprovementDefinition[] = [
   },
   {
     id: "cooking-hearth-b",
-    name: "灶台 B",
+    name: "灶台二",
     cost: { clay: 5 },
     upgradeFrom: ["fireplace-a", "fireplace-b"],
     victoryPoints: 1,

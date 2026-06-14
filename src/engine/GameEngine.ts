@@ -3,6 +3,7 @@ import type { PlayerState, ResourceState, AnimalState, WorkerState } from "../st
 import type { ActionInput, AnimalOverflowResolution } from "../shared/types";
 import { majorImprovements } from "../config/majorImprovements";
 import { ActionResolver } from "./ActionResolver";
+import { AnimalManager } from "./AnimalManager";
 import { FarmManager } from "./FarmManager";
 import { HarvestManager } from "./HarvestManager";
 import type { HarvestFeedingInput } from "./HarvestManager";
@@ -15,6 +16,7 @@ export interface PlayerInput {
 
 export class GameEngine {
   private actionResolver = new ActionResolver();
+  private animalManager = new AnimalManager();
   private farmManager = new FarmManager();
   private harvestManager = new HarvestManager();
   private roundManager = new RoundManager();
@@ -131,7 +133,7 @@ export class GameEngine {
   }
 
   unavailableCardNotice(): string {
-    return "职业卡和次要发展卡将在未来开放。";
+    return "职业卡和小设施将在未来开放。";
   }
 
   placeWorker(state: GameState, playerId: string, workerId: string, actionSpaceId: string, input: ActionInput = {}): GameState {
@@ -166,6 +168,21 @@ export class GameEngine {
 
   submitHarvestBreeding(state: GameState, playerId: string, resolution: AnimalOverflowResolution): GameState {
     return this.guard(() => this.harvestManager.submitBreeding(state, playerId, resolution), state);
+  }
+
+  cookAnimals(state: GameState, playerId: string, improvementId: string, cookedAnimals: Array<{ animal: "sheep" | "boar" | "cattle"; count: number }>): GameState {
+    return this.guard(
+      () => ({
+        ...state,
+        players: state.players.map((player) => (player.id === playerId ? this.animalManager.cookAnimalsWithImprovement(player, improvementId, cookedAnimals) : player)),
+        actionLog: [
+          ...state.actionLog,
+          `${state.players.find((player) => player.id === playerId)?.name ?? playerId} 使用大设施烹饪动物。`,
+        ],
+        lastError: null,
+      }),
+      state,
+    );
   }
 
   private createPlayer(player: PlayerInput, isStartingPlayer: boolean): PlayerState {

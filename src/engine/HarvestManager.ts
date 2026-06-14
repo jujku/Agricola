@@ -31,7 +31,15 @@ export class HarvestManager {
       ...state,
       stage: "HARVEST_FIELD",
       players: state.players.map((player) => this.farmManager.harvestFields(player)),
-      actionLog: [...state.actionLog, `第 ${state.round} 轮收获田地。`],
+      actionLog: [
+        ...state.actionLog,
+        `第 ${state.round} 轮开始收获田地。${state.players
+          .map((player) => {
+            const harvest = harvestedByPlayerId[player.id];
+            return `${player.name} 收获谷物 ${harvest.grain}、蔬菜 ${harvest.vegetable}`;
+          })
+          .join("；")}。`,
+      ],
       harvestField: {
         round: state.round,
         submittedPlayerIds: [],
@@ -61,7 +69,10 @@ export class HarvestManager {
         ...state.harvestField,
         submittedPlayerIds,
       },
-      actionLog: [...state.actionLog, `${this.playerName(state, playerId)} 确认田地收获。`],
+      actionLog: [
+        ...state.actionLog,
+        `${this.playerName(state, playerId)} 确认田地收获。`,
+      ],
       lastError: null,
     };
 
@@ -123,7 +134,10 @@ export class HarvestManager {
             }
           : candidate,
       ),
-      actionLog: [...state.actionLog, `${player.name} 确认收获喂食。`],
+      actionLog: [
+        ...state.actionLog,
+        `${player.name} 确认收获喂食。谷物转食物 ${grainToFood}，蔬菜转食物 ${vegetableToFood}，烹饪 ${input.cookedAnimals?.reduce((sum, item) => sum + item.count, 0) ?? 0}。`,
+      ],
       lastError: null,
     };
 
@@ -164,7 +178,10 @@ export class HarvestManager {
         ...state.harvestBreeding,
         submittedPlayerIds: [...state.harvestBreeding.submittedPlayerIds, playerId],
       },
-      actionLog: [...state.actionLog, `${player.name} 确认动物繁殖。`],
+      actionLog: [
+        ...state.actionLog,
+        `${player.name} 确认动物繁殖。${this.describeBirths(playerId, resolution, state)}`,
+      ],
       lastError: null,
     };
 
@@ -285,6 +302,21 @@ export class HarvestManager {
     );
   }
 
+  private describeBirths(playerId: string, resolution: AnimalOverflowResolution, state: GameState): string {
+    const overflow = state.harvestBreeding?.overflowByPlayerId[playerId] ?? {};
+    const parts = (["sheep", "boar", "cattle"] as FarmAnimalType[])
+      .map((animal) => {
+        const birthCount = state.harvestBreeding?.birthsByPlayerId[playerId]?.[animal] ?? 0;
+        if (birthCount <= 0) return null;
+        const overflowCount = overflow[animal] ?? 0;
+        return `${this.animalName(animal)} ${birthCount}${overflowCount > 0 ? `，溢出 ${overflowCount}` : ""}`;
+      })
+      .filter((value): value is string => Boolean(value));
+    const handledCooked = resolution.cooked.map((item) => `${this.animalName(item.animal)} ${item.count} 烹饪`).join("、");
+    const handledDiscarded = resolution.discarded.map((item) => `${this.animalName(item.animal)} ${item.count} 丢弃`).join("、");
+    return [...parts, handledCooked, handledDiscarded].filter(Boolean).join("；");
+  }
+
   private findOverflowAnimalForPlacement(state: GameState, playerId: string, _target: string): FarmAnimalType | null {
     const overflow = state.harvestBreeding?.overflowByPlayerId[playerId] ?? {};
     return (["sheep", "boar", "cattle"] as FarmAnimalType[]).find((animal) => (overflow[animal] ?? 0) > 0) ?? null;
@@ -313,7 +345,7 @@ export class HarvestManager {
   private cookOverflowBirths(player: GameState["players"][number], cooked: AnimalCookInput[]): GameState["players"][number] {
     if (cooked.length === 0) return player;
     if (!this.canCookAnimal(player)) {
-      throw new Error("没有可烹饪动物的主要发展卡。");
+      throw new Error("没有可烹饪动物的大设施。");
     }
     const food = cooked.reduce((sum, item) => {
       if (item.count < 0 || !Number.isInteger(item.count)) {
@@ -343,6 +375,12 @@ export class HarvestManager {
 
   private playerName(state: GameState, playerId: string): string {
     return state.players.find((player) => player.id === playerId)?.name ?? playerId;
+  }
+
+  private animalName(animal: FarmAnimalType): string {
+    if (animal === "boar") return "野猪";
+    if (animal === "cattle") return "牛";
+    return "羊";
   }
 
   private normalizeAmount(value: number): number {

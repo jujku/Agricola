@@ -15,7 +15,10 @@ export class RoundManager {
   }
 
   createRoundDeck() {
-    return roundCards;
+    return [1, 2, 3, 4, 5, 6].flatMap((season) => {
+      const seasonCardIds = new Set(roundActionDefinitions.filter((action) => action.season === season).map((action) => action.id));
+      return this.shuffle(roundCards.filter((card) => seasonCardIds.has(card.id)));
+    });
   }
 
   prepareRound(state: GameState): GameState {
@@ -131,6 +134,15 @@ export class RoundManager {
     Object.entries(right).forEach(([key, value]) => {
       next[key] = (next[key] ?? 0) + value;
     });
+    return next;
+  }
+
+  private shuffle<T>(items: T[]): T[] {
+    const next = [...items];
+    for (let index = next.length - 1; index > 0; index -= 1) {
+      const swapIndex = Math.floor(Math.random() * (index + 1));
+      [next[index], next[swapIndex]] = [next[swapIndex], next[index]];
+    }
     return next;
   }
 

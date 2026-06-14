@@ -1,10 +1,13 @@
-import type { Server as HttpServer } from "node:http";
+﻿import type { Server as HttpServer } from "node:http";
 import { Server, type Socket } from "socket.io";
 import { GameEngine } from "../../engine/GameEngine";
 import { SocketEvents } from "../../shared/socketEvents";
 import type {
+  AdminAdjustResourcePayload,
+  AdminRoomPayload,
   AuthPayload,
   CardActionPayload,
+  CookWithMajorImprovementPayload,
   CreateRoomPayload,
   JoinRoomPayload,
   LeaveRoomPayload,
@@ -17,9 +20,10 @@ import type {
   SubmitHarvestBreedingPayload,
 } from "../../shared/types";
 import type { GameState } from "../../state/GameState";
+import type { AnimalState, ResourceState } from "../../state/PlayerState";
 import { FarmManager } from "../../engine/FarmManager";
 import { createAuthToken, resolveAuthToken } from "../db/authTokens";
-import { deleteRoomSnapshot, loadStoredRoomSnapshots, loginUser, registerUser, saveRoomSnapshot } from "../db/sqlite";
+import { deleteRoomSnapshot, ensureUser, loadStoredRoomSnapshots, loginUser, registerUser, saveRoomSnapshot } from "../db/sqlite";
 import { findRecoverableUserRoom } from "./roomRecovery";
 
 export interface RoomRecord {
@@ -35,8 +39,21 @@ const socketUsers = new Map<string, string>();
 const departedRoomPlayers = new Map<string, Set<string>>();
 const autoAdvancePhases: ReadonlySet<GameState["phase"]> = new Set(["RETURN_HOME", "HARVEST", "NEXT_ROUND", "ROUND_PREPARE"]);
 const scheduledAutoAdvances = new Map<string, Array<ReturnType<typeof setTimeout>>>();
+const adminUsername = "admin";
+const adminDefaultPassword = "admin";
+const adminTestRoomId = "admin-test";
+const adminTestResources: ResourceState = {
+  wood: 20,
+  clay: 20,
+  reed: 20,
+  stone: 20,
+  grain: 10,
+  vegetable: 10,
+  food: 20,
+};
 
 export function attachSocketServer(httpServer: HttpServer): Server {
+  ensureUser(adminUsername, adminDefaultPassword);
   loadStoredRoomSnapshots().forEach(({ snapshot, updatedAt }) => {
     if (snapshot.game.phase === "WAITING" || snapshot.game.players.length === 0) {
       deleteRoomSnapshot(snapshot.roomId);
@@ -49,6 +66,7 @@ export function attachSocketServer(httpServer: HttpServer): Server {
       updatedAt,
     });
   });
+  ensureAdminTestRoom();
 
   const io = new Server(httpServer, {
     cors: {
@@ -58,7 +76,7 @@ export function attachSocketServer(httpServer: HttpServer): Server {
   });
 
   io.on("connection", (socket) => {
-    socket.emit(SocketEvents.ROOM_LIST, createRoomList());
+    emitRoomList(socket);
 
     socket.on(SocketEvents.REGISTER, (payload: AuthPayload) => {
       const result = registerUser(payload.username, payload.password);
@@ -71,7 +89,7 @@ export function attachSocketServer(httpServer: HttpServer): Server {
       const token = createAuthToken(username);
       socketUsers.set(socket.id, username);
       socket.emit(SocketEvents.AUTH_SUCCESS, { username, token });
-      socket.emit(SocketEvents.ROOM_LIST, createRoomList());
+      emitRoomList(socket);
     });
 
     socket.on(SocketEvents.LOGIN, (payload: AuthPayload) => {
@@ -85,7 +103,7 @@ export function attachSocketServer(httpServer: HttpServer): Server {
       const token = createAuthToken(username);
       socketUsers.set(socket.id, username);
       socket.emit(SocketEvents.AUTH_SUCCESS, { username, token });
-      socket.emit(SocketEvents.ROOM_LIST, createRoomList());
+      emitRoomList(socket);
       syncUserRoom(io, socket, username);
     });
 
@@ -98,7 +116,7 @@ export function attachSocketServer(httpServer: HttpServer): Server {
 
       socketUsers.set(socket.id, username);
       socket.emit(SocketEvents.AUTH_SUCCESS, { username, token: payload.token });
-      socket.emit(SocketEvents.ROOM_LIST, createRoomList());
+      emitRoomList(socket);
       syncUserRoom(io, socket, username);
     });
 
@@ -116,7 +134,7 @@ export function attachSocketServer(httpServer: HttpServer): Server {
       rooms.set(roomId, room);
       socket.join(roomId);
       syncRoom(io, room);
-      io.emit(SocketEvents.ROOM_LIST, createRoomList());
+      broadcastRoomLists(io);
     });
 
     socket.on(SocketEvents.JOIN_ROOM, (payload: JoinRoomPayload) => {
@@ -127,6 +145,21 @@ export function attachSocketServer(httpServer: HttpServer): Server {
         socket.emit(SocketEvents.ACTION_NOTICE, {
           message: "房间不存在。",
         });
+        return;
+      }
+
+      if (isAdminTestRoom(room)) {
+        if (username !== adminUsername) {
+          socket.emit(SocketEvents.ACTION_NOTICE, {
+            message: "这个测试房间只有管理员可进入。",
+          });
+          return;
+        }
+        socket.join(payload.roomId);
+        socket.emit(SocketEvents.SYNC_STATE, {
+          roomId: room.roomId,
+          game: room.game,
+        } satisfies RoomSnapshot);
         return;
       }
 
@@ -162,7 +195,7 @@ export function attachSocketServer(httpServer: HttpServer): Server {
 
       socket.join(payload.roomId);
       syncRoom(io, room);
-      io.emit(SocketEvents.ROOM_LIST, createRoomList());
+      broadcastRoomLists(io);
     });
 
     socket.on(SocketEvents.LEAVE_ROOM, (payload: LeaveRoomPayload) => {
@@ -173,6 +206,16 @@ export function attachSocketServer(httpServer: HttpServer): Server {
         socket.emit(SocketEvents.ACTION_NOTICE, {
           message: "没有找到可退出的房间。",
         });
+        return;
+      }
+
+      if (isAdminTestRoom(room)) {
+        socket.leave(payload.roomId);
+        socket.emit(SocketEvents.ROOM_LEFT, {
+          roomId: payload.roomId,
+          message: "已离开测试房间。",
+        });
+        emitRoomList(socket);
         return;
       }
 
@@ -200,7 +243,7 @@ export function attachSocketServer(httpServer: HttpServer): Server {
           roomId: payload.roomId,
           message: "已退出房间。",
         });
-        io.emit(SocketEvents.ROOM_LIST, createRoomList());
+        broadcastRoomLists(io);
         return;
       }
 
@@ -210,7 +253,7 @@ export function attachSocketServer(httpServer: HttpServer): Server {
         roomId: payload.roomId,
         message: "已退出房间。游戏已经开始，不能中途重新加入。",
       });
-      socket.emit(SocketEvents.ROOM_LIST, createRoomList());
+      emitRoomList(socket);
     });
 
     socket.on(SocketEvents.START_GAME, (payload: StartGamePayload) => {
@@ -219,9 +262,9 @@ export function attachSocketServer(httpServer: HttpServer): Server {
         return;
       }
 
-      room.game = engine.startGame(room.game);
+      room.game = isAdminTestRoom(room) ? restartAdminTestGame() : engine.startGame(room.game);
       syncRoom(io, room);
-      io.emit(SocketEvents.ROOM_LIST, createRoomList());
+      broadcastRoomLists(io);
     });
 
     socket.on(SocketEvents.PLACE_WORKER, (payload: PlaceWorkerPayload) => {
@@ -230,10 +273,14 @@ export function attachSocketServer(httpServer: HttpServer): Server {
         return;
       }
 
-      room.game = engine.placeWorker(room.game, payload.playerId, payload.workerId, payload.actionSpaceId, payload.input);
+      room.game = isAdminTestRoom(room)
+        ? placeAdminTestWorker(room.game, payload.playerId, payload.actionSpaceId, payload.input)
+        : engine.placeWorker(room.game, payload.playerId, payload.workerId, payload.actionSpaceId, payload.input);
       syncRoom(io, room);
-      scheduleAutoAdvanceNonInteractivePhases(io, room);
-      io.emit(SocketEvents.ROOM_LIST, createRoomList());
+      if (!isAdminTestRoom(room)) {
+        scheduleAutoAdvanceNonInteractivePhases(io, room);
+      }
+      broadcastRoomLists(io);
     });
 
     socket.on(SocketEvents.PLAY_OCCUPATION, (payload: CardActionPayload) => {
@@ -275,7 +322,7 @@ export function attachSocketServer(httpServer: HttpServer): Server {
 
       room.game = engine.submitHarvestField(room.game, payload.playerId);
       syncRoom(io, room);
-      io.emit(SocketEvents.ROOM_LIST, createRoomList());
+      broadcastRoomLists(io);
     });
 
     socket.on(SocketEvents.SUBMIT_HARVEST_FEEDING, (payload: SubmitHarvestFeedingPayload) => {
@@ -307,7 +354,7 @@ export function attachSocketServer(httpServer: HttpServer): Server {
         scheduleAutoAdvanceNonInteractivePhases(io, room);
       }
 
-      io.emit(SocketEvents.ROOM_LIST, createRoomList());
+      broadcastRoomLists(io);
     });
 
     socket.on(SocketEvents.SUBMIT_HARVEST_BREEDING, (payload: SubmitHarvestBreedingPayload) => {
@@ -326,7 +373,64 @@ export function attachSocketServer(httpServer: HttpServer): Server {
       room.game = engine.submitHarvestBreeding(room.game, payload.playerId, payload.resolution);
       syncRoom(io, room);
       scheduleAutoAdvanceNonInteractivePhases(io, room);
-      io.emit(SocketEvents.ROOM_LIST, createRoomList());
+      broadcastRoomLists(io);
+    });
+
+    socket.on(SocketEvents.COOK_WITH_MAJOR_IMPROVEMENT, (payload: CookWithMajorImprovementPayload) => {
+      const room = rooms.get(payload.roomId);
+      const username = socketUsers.get(socket.id);
+      if (!room) {
+        return;
+      }
+      if (username !== payload.playerId) {
+        socket.emit(SocketEvents.ACTION_NOTICE, {
+          message: "只能操作自己的大设施。",
+        });
+        return;
+      }
+
+      room.game = engine.cookAnimals(room.game, payload.playerId, payload.improvementId, payload.cookedAnimals);
+      syncRoom(io, room);
+      broadcastRoomLists(io);
+    });
+
+    socket.on(SocketEvents.ADMIN_RESTART_TEST_ROOM, (payload: AdminRoomPayload) => {
+      if (!assertAdminTestAction(socket, payload.roomId)) {
+        return;
+      }
+      const room = rooms.get(adminTestRoomId);
+      if (!room) return;
+
+      room.game = restartAdminTestGame();
+      socket.join(adminTestRoomId);
+      syncRoom(io, room);
+      broadcastRoomLists(io);
+      socket.emit(SocketEvents.ACTION_NOTICE, {
+        message: "测试房间已重开。",
+      });
+    });
+
+    socket.on(SocketEvents.ADMIN_ADVANCE_ROUND, (payload: AdminRoomPayload) => {
+      if (!assertAdminTestAction(socket, payload.roomId)) {
+        return;
+      }
+      const room = rooms.get(adminTestRoomId);
+      if (!room) return;
+
+      room.game = advanceAdminTestRound(room.game);
+      syncRoom(io, room);
+      broadcastRoomLists(io);
+    });
+
+    socket.on(SocketEvents.ADMIN_ADJUST_RESOURCE, (payload: AdminAdjustResourcePayload) => {
+      if (!assertAdminTestAction(socket, payload.roomId)) {
+        return;
+      }
+      const room = rooms.get(adminTestRoomId);
+      if (!room) return;
+
+      room.game = adjustAdminTestResource(room.game, payload.playerId, payload.key, payload.delta);
+      syncRoom(io, room);
     });
 
     socket.on(SocketEvents.END_ACTION, (payload: StartGamePayload) => {
@@ -337,7 +441,7 @@ export function attachSocketServer(httpServer: HttpServer): Server {
 
       room.game = engine.advancePhase(room.game);
       syncRoom(io, room);
-      io.emit(SocketEvents.ROOM_LIST, createRoomList());
+      broadcastRoomLists(io);
     });
 
     socket.on("disconnect", () => {
@@ -360,20 +464,38 @@ function createNumericRoomId(): string {
   return roomId;
 }
 
-function createRoomList() {
+function createRoomList(username?: string | null) {
   return Array.from(rooms.values()).map((room) => ({
     roomId: room.roomId,
     phase: room.game.phase,
     round: room.game.round,
+    isTestRoom: isAdminTestRoom(room),
     players: room.game.players.map((player) => ({
       id: player.id,
       name: player.name,
     })),
-  })).filter((room) => room.phase === "WAITING" && room.players.length > 0);
+  })).filter((room) => {
+    if (room.isTestRoom) {
+      return username === adminUsername;
+    }
+    return room.phase === "WAITING" && room.players.length > 0;
+  });
+}
+
+function emitRoomList(socket: Socket): void {
+  socket.emit(SocketEvents.ROOM_LIST, createRoomList(socketUsers.get(socket.id)));
+}
+
+function broadcastRoomLists(io: Server): void {
+  io.sockets.sockets.forEach((socket) => emitRoomList(socket));
 }
 
 function findUserRoom(username: string): RoomRecord | null {
-  return findRecoverableUserRoom(rooms.values(), username, hasDepartedRoom);
+  return findRecoverableUserRoom(
+    Array.from(rooms.values()).filter((room) => !isAdminTestRoom(room)),
+    username,
+    hasDepartedRoom,
+  );
 }
 
 function leaveWaitingRoomsForUser(io: Server, socket: Socket, username: string, exceptRoomId?: string): void {
@@ -406,7 +528,7 @@ function syncUserRoom(io: Server, socket: Socket, username: string): void {
     roomId: room.roomId,
     game: room.game,
   } satisfies RoomSnapshot);
-  io.emit(SocketEvents.ROOM_LIST, createRoomList());
+  broadcastRoomLists(io);
 }
 
 function syncRoom(io: Server, room: RoomRecord): void {
@@ -417,7 +539,9 @@ function syncRoom(io: Server, room: RoomRecord): void {
     game: room.game,
   };
 
-  saveRoomSnapshot(snapshot);
+  if (!isAdminTestRoom(room)) {
+    saveRoomSnapshot(snapshot);
+  }
   io.to(room.roomId).emit(SocketEvents.SYNC_STATE, snapshot);
 }
 
@@ -443,16 +567,203 @@ function hasDepartedRoom(roomId: string, username: string): boolean {
   return departedRoomPlayers.get(roomId)?.has(username) ?? false;
 }
 
+function ensureAdminTestRoom(): RoomRecord {
+  const existing = rooms.get(adminTestRoomId);
+  if (existing) {
+    existing.game = keepAdminTestPlayable(migrateGameState(existing.game));
+    return existing;
+  }
+
+  const room: RoomRecord = {
+    roomId: adminTestRoomId,
+    game: restartAdminTestGame(),
+    updatedAt: new Date().toISOString(),
+  };
+  rooms.set(adminTestRoomId, room);
+  return room;
+}
+
+function isAdminTestRoom(room: RoomRecord): boolean {
+  return room.roomId === adminTestRoomId;
+}
+
+function assertAdminTestAction(socket: Socket, roomId: string): boolean {
+  const username = socketUsers.get(socket.id);
+  if (username !== adminUsername || roomId !== adminTestRoomId) {
+    socket.emit(SocketEvents.ACTION_NOTICE, {
+      message: "只有管理员可以操作测试房间。",
+    });
+    return false;
+  }
+  return true;
+}
+
+function restartAdminTestGame(): GameState {
+  const waiting = engine.addPlayer(engine.createWaitingGame(adminTestRoomId), {
+    id: adminUsername,
+    name: adminUsername,
+  });
+  const started = engine.startGame({
+    ...waiting,
+    players: [
+      ...waiting.players,
+      {
+        ...waiting.players[0],
+        id: "test-2",
+        name: "测试玩家",
+      },
+    ],
+  });
+  return keepAdminTestPlayable({
+    ...started,
+    players: started.players.map((player) =>
+      player.id === adminUsername
+        ? {
+            ...player,
+            resources: { ...adminTestResources },
+          }
+        : player,
+    ),
+    actionLog: ["测试房间已开启。"],
+  });
+}
+
+function keepAdminTestPlayable(state: GameState): GameState {
+  return {
+    ...state,
+    phase: "WORK_PHASE",
+    stage: "WORK_PHASE",
+    currentPlayer: adminUsername,
+    currentPlayerIndex: Math.max(
+      0,
+      state.players.findIndex((player) => player.id === adminUsername),
+    ),
+    actionSpaces: state.actionSpaces.map((space) => ({ ...space, occupiedBy: null })),
+    players: state.players.map((player) => ({
+      ...player,
+      workers:
+        player.id === adminUsername
+          ? player.workers.map((worker) => ({
+              ...worker,
+              location: "home" as const,
+              actionSpaceId: null,
+              availableRound: Math.min(worker.availableRound, state.round),
+            }))
+          : player.workers,
+    })),
+    harvestField: null,
+    harvestFeeding: null,
+    harvestBreeding: null,
+    lastError: null,
+  };
+}
+
+function placeAdminTestWorker(state: GameState, playerId: string, actionSpaceId: string, input: PlaceWorkerPayload["input"]): GameState {
+  const adminState = keepAdminTestPlayable({
+    ...state,
+    currentPlayer: playerId,
+  });
+  const workerId = adminState.players.find((player) => player.id === playerId)?.workers[0]?.id;
+  if (!workerId) {
+    return {
+      ...adminState,
+      lastError: "测试房间没有可用工人。",
+    };
+  }
+  const result = engine.placeWorker(adminState, playerId, workerId, actionSpaceId, input);
+  return keepAdminTestPlayable({
+    ...result,
+    actionLog: result.actionLog,
+  });
+}
+
+function advanceAdminTestRound(state: GameState): GameState {
+  const targetRound = Math.min(14, Math.max(1, state.round + 1));
+  const existingDeck = state.roundDeck.length > 0 ? state.roundDeck : engine.createWaitingGame("deck-source").roundDeck.slice(state.roundCards.length);
+  let next = keepAdminTestPlayable({
+    ...state,
+    round: targetRound,
+    roundDeck: existingDeck,
+  });
+  next = engine.advancePhase({
+    ...next,
+    phase: "ROUND_PREPARE",
+    stage: "ROUND_PREPARE",
+  });
+  return keepAdminTestPlayable({
+    ...next,
+    actionLog: [...state.actionLog, `管理员推进到第 ${targetRound} 轮。`],
+  });
+}
+
+function adjustAdminTestResource(state: GameState, playerId: string, key: AdminAdjustResourcePayload["key"], delta: number): GameState {
+  const normalizedDelta = Number.isFinite(delta) ? Math.trunc(delta) : 0;
+  return {
+    ...state,
+    players: state.players.map((player) => {
+      if (player.id !== playerId) return player;
+      if (key === "begging") {
+        return {
+          ...player,
+          beggingCards: Math.max(0, player.beggingCards + normalizedDelta),
+        };
+      }
+      if (isAnimalKey(key)) {
+        return {
+          ...player,
+          animals: {
+            ...player.animals,
+            [key]: Math.max(0, player.animals[key] + normalizedDelta),
+          },
+        };
+      }
+      return {
+        ...player,
+        resources: {
+          ...player.resources,
+          [key]: Math.max(0, player.resources[key] + normalizedDelta),
+        },
+      };
+    }),
+    actionLog: [...state.actionLog, `管理员调整 ${playerId} 的${adminResourceLabel(key)} ${normalizedDelta > 0 ? "+" : ""}${normalizedDelta}。`],
+  };
+}
+
+function isAnimalKey(key: AdminAdjustResourcePayload["key"]): key is keyof AnimalState {
+  return key === "sheep" || key === "boar" || key === "cattle";
+}
+
+function adminResourceLabel(key: AdminAdjustResourcePayload["key"]): string {
+  const labels: Record<AdminAdjustResourcePayload["key"], string> = {
+    wood: "木材",
+    clay: "黏土",
+    reed: "芦苇",
+    stone: "石头",
+    grain: "谷物",
+    vegetable: "蔬菜",
+    food: "食物",
+    sheep: "羊",
+    boar: "野猪",
+    cattle: "牛",
+    begging: "乞讨卡",
+  };
+  return labels[key];
+}
+
 function routePlaceWorker(io: Server, payload: PlaceWorkerPayload): void {
   const room = rooms.get(payload.roomId);
   if (!room) {
     return;
   }
 
-  room.game = engine.placeWorker(room.game, payload.playerId, payload.workerId, payload.actionSpaceId, payload.input);
+  room.game = isAdminTestRoom(room)
+    ? placeAdminTestWorker(room.game, payload.playerId, payload.actionSpaceId, payload.input)
+    : engine.placeWorker(room.game, payload.playerId, payload.workerId, payload.actionSpaceId, payload.input);
   syncRoom(io, room);
-  scheduleAutoAdvanceNonInteractivePhases(io, room);
-  io.emit(SocketEvents.ROOM_LIST, createRoomList());
+  if (!isAdminTestRoom(room)) {
+    scheduleAutoAdvanceNonInteractivePhases(io, room);
+  }
+  broadcastRoomLists(io);
 }
 
 function scheduleAutoAdvanceNonInteractivePhases(io: Server, room: RoomRecord): void {
@@ -484,7 +795,7 @@ function scheduleAutoAdvanceNonInteractivePhases(io: Server, room: RoomRecord): 
 
       latestRoom.game = autoAdvanceNonInteractivePhases(latestRoom.game);
       syncRoom(io, latestRoom);
-      io.emit(SocketEvents.ROOM_LIST, createRoomList());
+      broadcastRoomLists(io);
       clearScheduledAutoAdvance(roomId);
     }, 1000);
 

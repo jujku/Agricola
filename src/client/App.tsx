@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { AnimalCookInput, AnimalOverflowResolution, RoomListItem } from "../shared/types";
 import {
+  adjustAdminResource,
+  advanceAdminRound,
   createRoom,
   joinRoom,
   leaveRoom,
   login,
   logout,
   register,
+  restartAdminTestRoom,
   startGame,
   submitHarvestBreeding,
   submitHarvestFeeding,
@@ -15,9 +18,12 @@ import {
 } from "./socket/clientSocket";
 import { useGameStore } from "./store/gameStore";
 import { Board } from "./ui/Board/Board";
-import { Cards } from "./ui/Cards/Cards";
 import { Farm } from "./ui/Farm/Farm";
+import { OperationLog } from "./ui/OperationLog/OperationLog";
 import { Resources } from "./ui/Resources/Resources";
+import { FinalScoreReveal } from "./ui/Scoring/FinalScoreReveal";
+import { ScoringGuide } from "./ui/Scoring/ScoringGuide";
+import { calculateLiveScore } from "./ui/Scoring/scoringView";
 import { RESOURCE_ICONS } from "./ui/VisualSystem/ResourceIcons";
 import { getPlayerColor, getPlayerColorById } from "./ui/VisualSystem/playerColors";
 
@@ -25,6 +31,7 @@ const emptyPlayers: NonNullable<ReturnType<typeof useGameStore.getState>["game"]
 type Player = (typeof emptyPlayers)[number];
 type Animal = AnimalCookInput["animal"];
 type BadgeType = "grain" | "vegetable" | "food" | "begging" | Animal;
+type AdminAdjustKey = Parameters<typeof adjustAdminResource>[2];
 
 export function App() {
   const { connected, game, notice, roomId, rooms, setNotice, username } = useGameStore();
@@ -120,12 +127,14 @@ export function App() {
           <span className={connected ? "pill ok" : "pill"}>连接：{connected ? "已连接" : "未连接"}</span>
           <span className="pill">第 {game.round} 轮</span>
           <span className="pill">{translatePhase(game.phase)}</span>
+          {roomId === "admin-test" ? <span className="pill ok">测试房</span> : null}
           {game.phase === "WAITING" ? <button onClick={() => roomId && startGame(roomId)}>开始游戏</button> : null}
           <button className="secondary-button" onClick={() => setConfirmLeaveOpen(true)}>
             退出房间
           </button>
         </div>
       </header>
+      <ScoringGuide />
 
       <section className="game-layout">
         <aside className="left-rail">
@@ -155,6 +164,7 @@ export function App() {
                     ) : null}
                     {player.workers.length} 工人 / {player.resources.food} 食物
                   </small>
+                  <strong className="avatar-score">实时 {calculateLiveScore(player).total} 分</strong>
                 </button>
               ))}
             </div>
@@ -168,7 +178,7 @@ export function App() {
               </div>
             </header>
             <Farm player={viewingPlayer ?? null} isOwnFarm={Boolean(viewingPlayer && viewingPlayer.id === username)} playerColor={viewingPlayerColor} />
-            <Resources player={viewingPlayer ?? null} />
+            <Resources game={game} isOwnPlayer={Boolean(viewingPlayer && viewingPlayer.id === username)} player={viewingPlayer ?? null} roomId={roomId} />
           </section>
         </aside>
 
@@ -177,11 +187,13 @@ export function App() {
         </section>
 
         <aside className="right-rail">
-          <Cards />
+          {roomId === "admin-test" && myPlayer ? <AdminTestPanel roomId={roomId} player={myPlayer} /> : null}
+          <OperationLog />
         </aside>
       </section>
 
       <NoticeOverlay message={notice ?? game.lastError} onDone={() => setNotice(null)} />
+      <FinalScoreReveal game={game} />
       <ConfirmOverlay
         open={confirmLeaveOpen}
         title="退出房间"
@@ -334,6 +346,7 @@ function LobbyPage({
   onLogout: () => void;
 }) {
   const visibleRooms = rooms.filter((room) => /^\d+$/.test(room.roomId) && room.phase === "WAITING");
+  const testRooms = rooms.filter((room) => room.isTestRoom);
 
   return (
     <main className="app-shell">
@@ -365,8 +378,16 @@ function LobbyPage({
           <button onClick={onJoinManualRoom}>加入房间</button>
         </div>
         <div className="room-list">
+          {testRooms.map((room) => (
+            <button key={room.roomId} className="room-card room-card--test" onClick={() => onJoinRoom(room)}>
+              <span className="room-number">测试房</span>
+              <span>{translatePhase(room.phase)} / 第 {room.round} 轮</span>
+              <small>仅管理员可见，可重开、推进回合、调整资源</small>
+              <strong>进入测试房</strong>
+            </button>
+          ))}
           {visibleRooms.length === 0 ? (
-            <p className="muted">当前没有可加入房间。</p>
+            testRooms.length === 0 ? <p className="muted">当前没有可加入房间。</p> : null
           ) : (
             visibleRooms.map((room) => (
               <button key={room.roomId} className="room-card" onClick={() => onJoinRoom(room)}>
@@ -382,6 +403,58 @@ function LobbyPage({
         </div>
       </section>
     </main>
+  );
+}
+
+function AdminTestPanel({ player, roomId }: { player: Player; roomId: string }) {
+  const items: Array<{ key: AdminAdjustKey; label: string; icon: keyof typeof RESOURCE_ICONS; count: number }> = [
+    { key: "wood", label: "木材", icon: "wood", count: player.resources.wood },
+    { key: "clay", label: "黏土", icon: "clay", count: player.resources.clay },
+    { key: "reed", label: "芦苇", icon: "reed", count: player.resources.reed },
+    { key: "stone", label: "石头", icon: "stone", count: player.resources.stone },
+    { key: "food", label: "食物", icon: "food", count: player.resources.food },
+    { key: "grain", label: "谷物", icon: "grain", count: player.resources.grain },
+    { key: "vegetable", label: "蔬菜", icon: "vegetable", count: player.resources.vegetable },
+    { key: "sheep", label: "羊", icon: "sheep", count: player.animals.sheep },
+    { key: "boar", label: "野猪", icon: "boar", count: player.animals.boar },
+    { key: "cattle", label: "牛", icon: "cattle", count: player.animals.cattle },
+    { key: "begging", label: "乞讨", icon: "begging", count: player.beggingCards },
+  ];
+
+  return (
+    <section className="panel admin-test-panel">
+      <header className="admin-test-panel__header">
+        <div>
+          <h2>测试控制</h2>
+          <p className="muted">仅管理员测试房可用。</p>
+        </div>
+      </header>
+      <div className="admin-test-panel__actions">
+        <button onClick={() => restartAdminTestRoom(roomId)}>重开测试房</button>
+        <button className="secondary-button" onClick={() => advanceAdminRound(roomId)}>
+          推进回合
+        </button>
+      </div>
+      <div className="admin-resource-editor">
+        {items.map((item) => {
+          const Icon = RESOURCE_ICONS[item.icon];
+          return (
+            <div key={item.key} className="admin-resource-editor__row">
+              <span>
+                <Icon size={24} />
+                {item.label}
+              </span>
+              <strong>{item.count}</strong>
+              <button className="secondary-button" onClick={() => adjustAdminResource(roomId, player.id, item.key, -1)}>
+                -1
+              </button>
+              <button onClick={() => adjustAdminResource(roomId, player.id, item.key, 1)}>+1</button>
+              <button onClick={() => adjustAdminResource(roomId, player.id, item.key, 5)}>+5</button>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -639,7 +712,7 @@ function AnimalCookPanel({
   return (
     <div className="harvest-cook-panel">
       <button className="secondary-button" disabled={disabled} onClick={() => setOpen((value) => !value)}>
-        烹饪动物{cookedTotal > 0 ? ` x ${cookedTotal}` : ""}
+        烹饪动物{cookedTotal > 0 ? ` × ${cookedTotal}` : ""}
       </button>
       {!canCook ? <small className="muted">需要壁炉或灶台</small> : null}
       {open && !disabled ? (

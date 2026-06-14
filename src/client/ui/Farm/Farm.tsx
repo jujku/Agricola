@@ -30,7 +30,7 @@ export function Farm({ player, isOwnFarm, playerColor = "#C84040" }: FarmProps) 
       <header className="player-farm__header">
         <div>
           <h2>{player ? `${player.name} 的农场` : "玩家农场"}</h2>
-          <span>5列 x 3行</span>
+          <span>5列 × 3行</span>
         </div>
         {isOwnFarm ? <strong>我的农场</strong> : null}
       </header>
@@ -82,7 +82,7 @@ function FarmTile({
   const showWorker = Boolean(cell?.room && col === 0 && (row === 1 || row === 2) && workersAtHome > (row === 1 ? 0 : 1));
 
   return (
-    <div className={`farm-tile farm-tile--${state}`} style={{ ["--player-color" as string]: playerColor }} aria-label={`farm[${col}][${row}] ${state}`}>
+    <div className={`farm-tile farm-tile--${state}`} style={{ ["--player-color" as string]: playerColor }} aria-label={`农场第${col + 1}列第${row + 1}行，${translateCellState(state)}`}>
       <TileContent cell={cell} player={player} playerColor={playerColor} state={state} showWorker={showWorker} />
       <small>
         {col},{row}
@@ -106,15 +106,17 @@ function TileContent({ cell, player, playerColor, state, showWorker }: { cell?: 
     const HouseAnimalIcon = houseAnimal === "boar" ? BoarIcon : houseAnimal === "cattle" ? CattleIcon : SheepIcon;
     return (
       <div className={`farm-tile__room farm-tile__room--${cell.roomMaterial ?? "wood"}`}>
-        <span>{translateRoom(cell.roomMaterial)}</span>
+        <span className="farm-tile__room-label">{translateRoom(cell.roomMaterial)}</span>
+        <div className="farm-tile__roofline" />
+        <div className="farm-tile__wall">
+          <Icon size={26} />
+        </div>
         {houseAnimal ? (
-          <div className="farm-tile__stack">
+          <div className="farm-tile__stack farm-tile__stack--room">
             <HouseAnimalIcon size={22} />
             <strong>{player.farm.animalHousing.house.count}</strong>
           </div>
-        ) : (
-          <Icon size={24} />
-        )}
+        ) : null}
         {showWorker ? <FamilyMemberIcon className="farm-tile__worker" color={playerColor} size={18} /> : null}
       </div>
     );
@@ -201,9 +203,17 @@ function getCellState(cell?: FarmCellView): "empty" | "room" | "field" | "pastur
   return "empty";
 }
 
+function translateCellState(state: ReturnType<typeof getCellState>): string {
+  if (state === "room") return "房间";
+  if (state === "field") return "田地";
+  if (state === "pasture") return "牧场";
+  if (state === "stable") return "马厩";
+  return "空地";
+}
+
 function translateRoom(material: FarmCellView["roomMaterial"]): string {
-  if (material === "clay") return "黏土房";
-  if (material === "stone") return "石屋";
+  if (material === "clay") return "瓦房";
+  if (material === "stone") return "石头房";
   return "木屋";
 }
 

@@ -1,6 +1,16 @@
 import { io } from "socket.io-client";
 import { SocketEvents } from "../../shared/socketEvents";
-import type { ActionInput, ActionNotice, AnimalCookInput, AnimalOverflowResolution, AuthSuccessPayload, RoomLeftPayload, RoomListItem, RoomSnapshot } from "../../shared/types";
+import type {
+  ActionInput,
+  ActionNotice,
+  AdminAdjustResourcePayload,
+  AnimalCookInput,
+  AnimalOverflowResolution,
+  AuthSuccessPayload,
+  RoomLeftPayload,
+  RoomListItem,
+  RoomSnapshot,
+} from "../../shared/types";
 import { useGameStore } from "../store/gameStore";
 
 const tokenStorageKey = "agricola-lite-token";
@@ -143,8 +153,29 @@ export function submitHarvestBreeding(roomId: string, playerId: string, resoluti
   });
 }
 
+export function cookWithMajorImprovement(roomId: string, playerId: string, improvementId: string, cookedAnimals: AnimalCookInput[]): void {
+  socket.emit(SocketEvents.COOK_WITH_MAJOR_IMPROVEMENT, {
+    roomId,
+    playerId,
+    improvementId,
+    cookedAnimals,
+  });
+}
+
 export function endAction(roomId: string): void {
   socket.emit(SocketEvents.END_ACTION, { roomId });
+}
+
+export function restartAdminTestRoom(roomId: string): void {
+  socket.emit(SocketEvents.ADMIN_RESTART_TEST_ROOM, { roomId });
+}
+
+export function advanceAdminRound(roomId: string): void {
+  socket.emit(SocketEvents.ADMIN_ADVANCE_ROUND, { roomId });
+}
+
+export function adjustAdminResource(roomId: string, playerId: string, key: AdminAdjustResourcePayload["key"], delta: number): void {
+  socket.emit(SocketEvents.ADMIN_ADJUST_RESOURCE, { roomId, playerId, key, delta });
 }
 
 function getStoredToken(): string | null {
