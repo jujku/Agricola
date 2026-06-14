@@ -714,7 +714,7 @@ function AnimalCookPanel({
       <button className="secondary-button" disabled={disabled} onClick={() => setOpen((value) => !value)}>
         烹饪动物{cookedTotal > 0 ? ` × ${cookedTotal}` : ""}
       </button>
-      {!canCook ? <small className="muted">需要壁炉或灶台</small> : null}
+      {!canCook ? <small className="muted">需要篝火或灶台</small> : null}
       {open && !disabled ? (
         <div className="harvest-controls">
           {(["sheep", "boar", "cattle"] as const).map((animal) => {

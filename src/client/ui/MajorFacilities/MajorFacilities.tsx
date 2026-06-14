@@ -3,7 +3,16 @@ import { majorImprovements, type MajorImprovementDefinition } from "../../../con
 import type { AnimalCookInput } from "../../../shared/types";
 import type { GameState } from "../../../state/GameState";
 import type { PlayerState } from "../../../state/PlayerState";
+import basketmakerWorkshopArtUrl from "../../assets/major-facilities/basketmaker-workshop.png";
+import cardBackgroundUrl from "../../assets/major-facilities/card-background.png";
+import clayOvenArtUrl from "../../assets/major-facilities/clay-oven.png";
+import cookingHearthArtUrl from "../../assets/major-facilities/cooking-hearth.png";
+import fireplaceArtUrl from "../../assets/major-facilities/fireplace.png";
+import joineryArtUrl from "../../assets/major-facilities/joinery.png";
+import potteryArtUrl from "../../assets/major-facilities/pottery.png";
+import stoneOvenArtUrl from "../../assets/major-facilities/stone-oven.png";
 import victoryPointUrl from "../../assets/major-facilities/victory-point.png";
+import wellArtUrl from "../../assets/major-facilities/well.png";
 import { cookWithMajorImprovement } from "../../socket/clientSocket";
 import { RESOURCE_ICONS, type ResourceIconKey } from "../VisualSystem/ResourceIcons";
 
@@ -11,6 +20,19 @@ type Animal = AnimalCookInput["animal"];
 type MajorFacilitySlot = {
   card: MajorImprovementDefinition;
   purchasedBy: string | null;
+};
+
+const MAJOR_FACILITY_ART: Record<string, string> = {
+  "fireplace-a": fireplaceArtUrl,
+  "fireplace-b": fireplaceArtUrl,
+  "cooking-hearth-a": cookingHearthArtUrl,
+  "cooking-hearth-b": cookingHearthArtUrl,
+  "clay-oven": clayOvenArtUrl,
+  "stone-oven": stoneOvenArtUrl,
+  joinery: joineryArtUrl,
+  pottery: potteryArtUrl,
+  "basketmaker-workshop": basketmakerWorkshopArtUrl,
+  well: wellArtUrl,
 };
 
 interface MajorFacilitiesProps {
@@ -138,6 +160,7 @@ function MajorFacilityCard({
 }) {
   const isOwned = player?.majorImprovements.includes(card.id) ?? false;
   const isPurchased = Boolean(purchasedBy);
+  const artUrl = MAJOR_FACILITY_ART[card.id];
 
   return (
     <article className={`major-facility-card ${isPurchased ? "major-facility-card--purchased" : ""}`} aria-disabled={isPurchased || disabled}>
@@ -151,7 +174,8 @@ function MajorFacilityCard({
         </div>
       </header>
       <div className="major-facility-art" aria-hidden="true">
-        <RESOURCE_ICONS.stone size={36} />
+        <img alt="" className="major-facility-art__background" src={cardBackgroundUrl} />
+        {artUrl ? <img alt="" className="major-facility-art__item" src={artUrl} /> : null}
       </div>
       <EffectRows card={card} />
       {onBuy ? (
@@ -271,9 +295,16 @@ function EffectRows({ card, compact = false }: { card: MajorImprovementDefinitio
       ) : null}
       {otherEffects.map((effect, index) => {
         if (effect.type === "bakeBread") {
+          const grainLimit = effect.grainLimit ?? 1;
           return (
             <EffectSection key={`${effect.type}-${index}`} label="烤面包">
-              <IconRule from={[{ type: "grain", count: effect.grainLimit ?? 1 }]} to={[{ type: "food", count: effect.foodPerGrain }]} repeatable={effect.grainLimit === null} />
+              {Array.from({ length: grainLimit }, (_, itemIndex) => itemIndex + 1).map((grainCount) => (
+                <IconRule
+                  key={`${effect.type}-${grainCount}`}
+                  from={[{ type: "grain", count: grainCount }]}
+                  to={[{ type: "food", count: grainCount * effect.foodPerGrain }]}
+                />
+              ))}
             </EffectSection>
           );
         }
@@ -293,8 +324,8 @@ function EffectRows({ card, compact = false }: { card: MajorImprovementDefinitio
         }
         if (effect.type === "wellFood") {
           return (
-            <EffectSection key={`${effect.type}-${index}`} label={`${effect.rounds}轮`}>
-              <IconRule from={[]} to={[{ type: "food", count: effect.foodPerRound }]} repeatable />
+            <EffectSection key={`${effect.type}-${index}`} label={`未来${effect.rounds}轮`}>
+              <IconRule from={[]} to={[{ type: "food", count: effect.foodPerRound }]} />
             </EffectSection>
           );
         }
@@ -315,11 +346,9 @@ function EffectSection({ children, label }: { children: ReactNode; label: string
 
 function IconRule({
   from,
-  repeatable = false,
   to,
 }: {
   from: Array<{ type: string; count: number }>;
-  repeatable?: boolean;
   to: Array<{ type: string; count: number }>;
 }) {
   return (
@@ -327,7 +356,6 @@ function IconRule({
       <IconGroup items={from} />
       <span className="major-facility-arrow">→</span>
       <IconGroup items={to} />
-      {repeatable ? <span className="major-facility-repeat">可重复</span> : null}
     </div>
   );
 }
@@ -359,7 +387,7 @@ function BonusRule({
 
 function IconGroup({ items }: { items: Array<{ type: string; count: number }> }) {
   if (items.length === 0) {
-    return <span className="major-facility-icon-group major-facility-icon-group--empty">之后</span>;
+    return <span className="major-facility-icon-group major-facility-icon-group--empty">回合开始</span>;
   }
   return (
     <span className="major-facility-icon-group">

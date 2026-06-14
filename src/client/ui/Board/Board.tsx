@@ -655,7 +655,7 @@ function FarmActionOverlay({
   const roomCost = calculateRoomCost(player, roomCells.length);
   const discardAnimals = Math.max(0, animalAmount - sumPlacements(animalPlacements) - cookedAnimals);
   const activeBakeOption = bakeOptions.find((option) => option.id === bakeImprovementId) ?? bakeOptions[0] ?? null;
-  const bakeMaxGrain = activeBakeOption ? (activeBakeOption.grainLimit === null ? player.resources.grain : Math.min(player.resources.grain, activeBakeOption.grainLimit)) : 0;
+  const bakeMaxGrain = activeBakeOption ? Math.min(player.resources.grain, bakeOptionLimit(activeBakeOption)) : 0;
   const bakeEnabled = selectedEffectTypes.includes("bakeBread") || (selectedEffectTypes.includes("sideJob") && sideJobBakeEnabled);
   const displayedBakeGrain = bakeEnabled ? bakeGrain : 0;
   const displayedBakeFood = activeBakeOption ? displayedBakeGrain * activeBakeOption.foodPerGrain : 0;
@@ -832,7 +832,7 @@ function FarmActionOverlay({
               <strong>烤面包</strong>
               {activeBakeOption ? (
                 <span>
-                  当前大设施：{activeBakeOption.name}，每个谷物 → {activeBakeOption.foodPerGrain} 食物{activeBakeOption.grainLimit === null ? "，不限数量" : `，最多 ${activeBakeOption.grainLimit} 个`}
+                  当前大设施：{activeBakeOption.name}，每个谷物 → {activeBakeOption.foodPerGrain} 食物，{bakeOptionHint(activeBakeOption)}
                 </span>
               ) : (
                 <span className="muted">没有可烤面包的大设施</span>
@@ -853,13 +853,13 @@ function FarmActionOverlay({
                       className={option.id === bakeImprovementId ? "active" : ""}
                       onClick={() => {
                         setBakeImprovementId(option.id);
-                        setBakeGrain((current) => clampNumber(current <= 0 ? 1 : current, 0, option.grainLimit === null ? player.resources.grain : Math.min(player.resources.grain, option.grainLimit)));
+                        setBakeGrain((current) => clampNumber(current <= 0 ? 1 : current, 0, Math.min(player.resources.grain, bakeOptionLimit(option))));
                       }}
                     >
                       {option.name}
                       <small>
                         <RESOURCE_ICONS.grain size={14} /> × 1 → <RESOURCE_ICONS.food size={14} /> × {option.foodPerGrain}
-                        {option.grainLimit === null ? "，可重复" : `，最多 ${option.grainLimit}`}
+                        ，{bakeOptionHint(option)}
                       </small>
                     </button>
                   ))
@@ -1220,12 +1220,21 @@ function getBakeOptions(player: PlayerState): Array<{ id: string; name: string; 
   });
 }
 
+function bakeOptionLimit(option: { grainLimit: number | null }): number {
+  return option.grainLimit ?? 1;
+}
+
+function bakeOptionHint(option: { grainLimit: number | null }): string {
+  const limit = bakeOptionLimit(option);
+  return limit === 1 ? "每次 1 个" : `本次可选 1-${limit} 个`;
+}
+
 function isValidBakeInput(player: PlayerState, bake?: ActionInput["bake"]): boolean {
   if (!bake || !bake.improvementId) return false;
   const option = getBakeOptions(player).find((candidate) => candidate.id === bake.improvementId);
   if (!option) return false;
   if (bake.grain <= 0 || bake.grain > player.resources.grain) return false;
-  if (option.grainLimit !== null && bake.grain > option.grainLimit) return false;
+  if (bake.grain > bakeOptionLimit(option)) return false;
   return true;
 }
 

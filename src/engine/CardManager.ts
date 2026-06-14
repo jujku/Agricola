@@ -51,9 +51,13 @@ export class CardManager {
     if (!effect || effect.type !== "bakeBread") {
       throw new Error("该大设施不能烤面包。");
     }
-    const amount = effect.grainLimit === null ? grain : Math.min(grain, effect.grainLimit);
+    const amount = Math.floor(grain);
     if (amount <= 0 || player.resources.grain < amount) {
       throw new Error("谷物不足，不能烤面包。");
+    }
+    const grainLimit = effect.grainLimit ?? 1;
+    if (amount > grainLimit) {
+      throw new Error(`一次烤面包最多只能烤${grainLimit}个谷物。`);
     }
     return {
       ...player,

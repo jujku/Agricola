@@ -1,0 +1,299 @@
+{
+  "meta": {
+    "app": "texturepacker-trim",
+    "image": "d9bf6bf3-b168-4574-8651-3a03cd3f56aa.png",
+    "sourceSize": {
+      "w": 1536,
+      "h": 1024
+    },
+    "alphaThreshold": 1,
+    "padding": 2,
+    "extruded": true,
+    "trimMode": "Crop / Trim",
+    "detection": "alpha connected components",
+    "spriteCount": 9,
+    "sourceImage": "src/client/assets/sprites/major-facilities.png",
+    "rowOrdering": "detected alpha components clustered by vertical overlap, then sorted left-to-right"
+  },
+  "frames": {
+    "fireplace.png": {
+      "file": "fireplace.png",
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 47,
+        "y": 97,
+        "w": 454,
+        "h": 228
+      },
+      "tightFrame": {
+        "x": 49,
+        "y": 99,
+        "w": 450,
+        "h": 224
+      },
+      "offset": {
+        "x": 47,
+        "y": 97
+      },
+      "contentOffset": {
+        "x": 2,
+        "y": 2
+      },
+      "area": 62605,
+      "rotated": false,
+      "trimmed": true,
+      "detectedFile": "sprite_003.png"
+    },
+    "cooking-hearth.png": {
+      "file": "cooking-hearth.png",
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 537,
+        "y": 46,
+        "w": 475,
+        "h": 294
+      },
+      "tightFrame": {
+        "x": 539,
+        "y": 48,
+        "w": 471,
+        "h": 290
+      },
+      "offset": {
+        "x": 537,
+        "y": 46
+      },
+      "contentOffset": {
+        "x": 2,
+        "y": 2
+      },
+      "area": 82101,
+      "rotated": false,
+      "trimmed": true,
+      "detectedFile": "sprite_001.png"
+    },
+    "clay-oven.png": {
+      "file": "clay-oven.png",
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 1048,
+        "y": 46,
+        "w": 442,
+        "h": 284
+      },
+      "tightFrame": {
+        "x": 1050,
+        "y": 48,
+        "w": 438,
+        "h": 280
+      },
+      "offset": {
+        "x": 1048,
+        "y": 46
+      },
+      "contentOffset": {
+        "x": 2,
+        "y": 2
+      },
+      "area": 76059,
+      "rotated": false,
+      "trimmed": true,
+      "detectedFile": "sprite_002.png"
+    },
+    "stone-oven.png": {
+      "file": "stone-oven.png",
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 43,
+        "y": 345,
+        "w": 463,
+        "h": 279
+      },
+      "tightFrame": {
+        "x": 45,
+        "y": 347,
+        "w": 459,
+        "h": 275
+      },
+      "offset": {
+        "x": 43,
+        "y": 345
+      },
+      "contentOffset": {
+        "x": 2,
+        "y": 2
+      },
+      "area": 75793,
+      "rotated": false,
+      "trimmed": true,
+      "detectedFile": "sprite_004.png"
+    },
+    "joinery.png": {
+      "file": "joinery.png",
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 534,
+        "y": 369,
+        "w": 485,
+        "h": 261
+      },
+      "tightFrame": {
+        "x": 536,
+        "y": 371,
+        "w": 481,
+        "h": 257
+      },
+      "offset": {
+        "x": 534,
+        "y": 369
+      },
+      "contentOffset": {
+        "x": 2,
+        "y": 2
+      },
+      "area": 78882,
+      "rotated": false,
+      "trimmed": true,
+      "detectedFile": "sprite_006.png"
+    },
+    "pottery.png": {
+      "file": "pottery.png",
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 1037,
+        "y": 357,
+        "w": 455,
+        "h": 259
+      },
+      "tightFrame": {
+        "x": 1039,
+        "y": 359,
+        "w": 451,
+        "h": 255
+      },
+      "offset": {
+        "x": 1037,
+        "y": 357
+      },
+      "contentOffset": {
+        "x": 2,
+        "y": 2
+      },
+      "area": 77802,
+      "rotated": false,
+      "trimmed": true,
+      "detectedFile": "sprite_005.png"
+    },
+    "basketmaker-workshop.png": {
+      "file": "basketmaker-workshop.png",
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 43,
+        "y": 641,
+        "w": 478,
+        "h": 315
+      },
+      "tightFrame": {
+        "x": 45,
+        "y": 643,
+        "w": 474,
+        "h": 311
+      },
+      "offset": {
+        "x": 43,
+        "y": 641
+      },
+      "contentOffset": {
+        "x": 2,
+        "y": 2
+      },
+      "area": 92321,
+      "rotated": false,
+      "trimmed": true,
+      "detectedFile": "sprite_009.png"
+    },
+    "card-background.png": {
+      "file": "card-background.png",
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 544,
+        "y": 639,
+        "w": 448,
+        "h": 307
+      },
+      "tightFrame": {
+        "x": 546,
+        "y": 641,
+        "w": 444,
+        "h": 303
+      },
+      "offset": {
+        "x": 544,
+        "y": 639
+      },
+      "contentOffset": {
+        "x": 2,
+        "y": 2
+      },
+      "area": 129091,
+      "rotated": false,
+      "trimmed": true,
+      "detectedFile": "sprite_008.png"
+    },
+    "well.png": {
+      "file": "well.png",
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 1055,
+        "y": 633,
+        "w": 415,
+        "h": 317
+      },
+      "tightFrame": {
+        "x": 1057,
+        "y": 635,
+        "w": 411,
+        "h": 313
+      },
+      "offset": {
+        "x": 1055,
+        "y": 633
+      },
+      "contentOffset": {
+        "x": 2,
+        "y": 2
+      },
+      "area": 79837,
+      "rotated": false,
+      "trimmed": true,
+      "detectedFile": "sprite_007.png"
+    }
+  }
+}

@@ -479,6 +479,154 @@ describe("GameEngine", () => {
     expect(nextState.lastError).toBeNull();
   });
 
+  it("rejects baking more than one grain with a fireplace", () => {
+    const { engine, state } = startTwoPlayerGame();
+    const prepared = {
+      ...state,
+      actionSpaces: [
+        ...state.actionSpaces,
+        {
+          id: "sow-bake-test",
+          name: "播种与烤面包",
+          type: "choice" as const,
+          cost: {},
+          gain: {},
+          prerequisites: [],
+          rules: [],
+          restrictions: [],
+          occupiedBy: null,
+          accumulated: {},
+          effects: [{ type: "bakeBread" as const, id: "bake-only" }],
+        },
+      ],
+      players: state.players.map((candidate, index) =>
+        index === 0
+          ? {
+              ...candidate,
+              majorImprovements: ["fireplace-a"],
+              resources: { ...candidate.resources, grain: 2, food: 0 },
+            }
+          : candidate,
+      ),
+    };
+    const player = prepared.players[0];
+
+    const nextState = engine.placeWorker(prepared, player.id, player.workers[0].id, "sow-bake-test", {
+      selectedEffectTypes: ["bakeBread"],
+      selectedEffectIds: ["bake-only"],
+      bake: { improvementId: "fireplace-a", grain: 2 },
+    });
+
+    expect(nextState.players[0].resources.grain).toBe(2);
+    expect(nextState.players[0].resources.food).toBe(0);
+    expect(nextState.lastError).toBe("一次烤面包最多只能烤1个谷物。");
+  });
+
+  it("lets the stone oven bake up to two grain in one bake action", () => {
+    const { engine, state } = startTwoPlayerGame();
+    const prepared = {
+      ...state,
+      actionSpaces: [
+        ...state.actionSpaces,
+        {
+          id: "sow-bake-test",
+          name: "播种与烤面包",
+          type: "choice" as const,
+          cost: {},
+          gain: {},
+          prerequisites: [],
+          rules: [],
+          restrictions: [],
+          occupiedBy: null,
+          accumulated: {},
+          effects: [{ type: "bakeBread" as const, id: "bake-only" }],
+        },
+      ],
+      players: state.players.map((candidate, index) =>
+        index === 0
+          ? {
+              ...candidate,
+              majorImprovements: ["stone-oven"],
+              resources: { ...candidate.resources, grain: 2, food: 0 },
+            }
+          : candidate,
+      ),
+    };
+    const player = prepared.players[0];
+
+    const nextState = engine.placeWorker(prepared, player.id, player.workers[0].id, "sow-bake-test", {
+      selectedEffectTypes: ["bakeBread"],
+      selectedEffectIds: ["bake-only"],
+      bake: { improvementId: "stone-oven", grain: 2 },
+    });
+
+    expect(nextState.players[0].resources.grain).toBe(0);
+    expect(nextState.players[0].resources.food).toBe(8);
+    expect(nextState.lastError).toBeNull();
+  });
+
+  it("schedules well food across the next five rounds and collects one per round", () => {
+    const { engine, state } = startTwoPlayerGame();
+    const prepared = {
+      ...state,
+      round: 3,
+      actionSpaces: [
+        ...state.actionSpaces,
+        {
+          id: "buy-major-test",
+          name: "购买大设施",
+          type: "choice" as const,
+          cost: {},
+          gain: {},
+          prerequisites: [],
+          rules: [],
+          restrictions: [],
+          occupiedBy: null,
+          accumulated: {},
+          effects: [{ type: "buyMajorImprovement" as const, id: "buy-major" }],
+        },
+      ],
+      players: state.players.map((candidate, index) =>
+        index === 0
+          ? {
+              ...candidate,
+              resources: { ...candidate.resources, wood: 1, stone: 3, food: 0 },
+            }
+          : candidate,
+      ),
+    };
+    const player = prepared.players[0];
+
+    const bought = engine.placeWorker(prepared, player.id, player.workers[0].id, "buy-major-test", {
+      selectedEffectTypes: ["buyMajorImprovement"],
+      selectedEffectIds: ["buy-major"],
+      majorImprovementId: "well",
+    });
+
+    expect(bought.players[0].pendingFood).toEqual([
+      { round: 4, amount: 1 },
+      { round: 5, amount: 1 },
+      { round: 6, amount: 1 },
+      { round: 7, amount: 1 },
+      { round: 8, amount: 1 },
+    ]);
+
+    const roundFour = engine.advancePhase({
+      ...bought,
+      phase: "ROUND_PREPARE",
+      stage: "ROUND_PREPARE",
+      round: 4,
+    });
+
+    expect(roundFour.players[0].resources.food).toBe(1);
+    expect(roundFour.players[0].pendingFood).toEqual([
+      { round: 5, amount: 1 },
+      { round: 6, amount: 1 },
+      { round: 7, amount: 1 },
+      { round: 8, amount: 1 },
+    ]);
+  });
+
   it("resolves accumulated quarry resources when the UI sends a generated selection id", () => {
     const { engine, state } = startTwoPlayerGame();
     const prepared = {

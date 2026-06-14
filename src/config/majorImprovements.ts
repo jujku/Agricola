@@ -20,7 +20,7 @@ export interface MajorImprovementDefinition {
 export const majorImprovements: MajorImprovementDefinition[] = [
   {
     id: "fireplace-a",
-    name: "壁炉一",
+    name: "篝火一",
     cost: { clay: 2 },
     victoryPoints: 1,
     triggers: ["ON_COOK", "ON_BAKE_BREAD"],
@@ -29,12 +29,12 @@ export const majorImprovements: MajorImprovementDefinition[] = [
       { type: "cook", from: "sheep", toFood: 2 },
       { type: "cook", from: "boar", toFood: 2 },
       { type: "cook", from: "cattle", toFood: 3 },
-      { type: "bakeBread", grainLimit: null, foodPerGrain: 2 },
+      { type: "bakeBread", grainLimit: 1, foodPerGrain: 2 },
     ],
   },
   {
     id: "fireplace-b",
-    name: "壁炉二",
+    name: "篝火二",
     cost: { clay: 3 },
     victoryPoints: 1,
     triggers: ["ON_COOK", "ON_BAKE_BREAD"],
@@ -43,7 +43,7 @@ export const majorImprovements: MajorImprovementDefinition[] = [
       { type: "cook", from: "sheep", toFood: 2 },
       { type: "cook", from: "boar", toFood: 2 },
       { type: "cook", from: "cattle", toFood: 3 },
-      { type: "bakeBread", grainLimit: null, foodPerGrain: 2 },
+      { type: "bakeBread", grainLimit: 1, foodPerGrain: 2 },
     ],
   },
   {
@@ -58,7 +58,7 @@ export const majorImprovements: MajorImprovementDefinition[] = [
       { type: "cook", from: "sheep", toFood: 2 },
       { type: "cook", from: "boar", toFood: 3 },
       { type: "cook", from: "cattle", toFood: 4 },
-      { type: "bakeBread", grainLimit: null, foodPerGrain: 3 },
+      { type: "bakeBread", grainLimit: 1, foodPerGrain: 3 },
     ],
   },
   {
@@ -73,7 +73,7 @@ export const majorImprovements: MajorImprovementDefinition[] = [
       { type: "cook", from: "sheep", toFood: 2 },
       { type: "cook", from: "boar", toFood: 3 },
       { type: "cook", from: "cattle", toFood: 4 },
-      { type: "bakeBread", grainLimit: null, foodPerGrain: 3 },
+      { type: "bakeBread", grainLimit: 1, foodPerGrain: 3 },
     ],
   },
   {

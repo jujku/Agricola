@@ -120,6 +120,8 @@ Avoid card-internal scrollbars for core game cards when the layout can be solved
 
 Major facility cards should keep a fixed shared width and height across all ten slots, including purchased placeholders, and the card grid should sit centered in the modal. Prefer compact icon rules and grouped labels over repeated explanatory text, but preserve every functional rule needed to understand cost, victory points, conversions, harvest effects, and end-game bonuses. Do not make bordered labels, buttons, or button-like controls feel cramped: keep readable icon sizes and enough padding between text/icons and borders.
 
+Major facility art uses `src/client/assets/sprites/major-facilities.png` as the source sprite sheet. Cropped card artwork lives in `src/client/assets/major-facilities/` with `atlas.json` metadata from TexturePacker-style alpha trimming; `card-background.png` is the shared art-slot background, and the individual facility PNGs are layered above it in the card art frame.
+
 ## Testing Guidelines
 
 Add or update colocated `*.test.ts` files when changing engine, server, shared contracts, persistence, or scoring behavior.
