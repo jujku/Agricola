@@ -82,6 +82,11 @@ export function Board({ onSelfAction }: BoardProps) {
       onSelfAction?.();
       return;
     }
+    if (canChoiceInteract(actionSpace, actorPlayer)) {
+      setFarmAction(actionSpace);
+      onSelfAction?.();
+      return;
+    }
     if (canDirectExecute(actionSpace, actorPlayer)) {
       if (requiresImprovementChoice(actionSpace)) {
         setImprovementChoiceAction({ actionSpace, sourceElement });
@@ -279,6 +284,12 @@ function canFarmInteract(actionSpace: ActionSpaceState): boolean {
   return leafEffects.some((effect) => farmInteractionTypes.has(effect.type));
 }
 
+function canChoiceInteract(actionSpace: ActionSpaceState, player?: PlayerState): boolean {
+  if (actionSpace.type === "placeholder" || requiresImprovementChoice(actionSpace) || hasMajorFacilityPurchase(actionSpace)) return false;
+  const choices = getActionEffectChoices(actionSpace, player);
+  return choices.length > 1 && choices.some((choice) => !choice.disabled);
+}
+
 function flattenEffects(effects: ActionSpaceState["effects"]): Array<{ type: string }> {
   return effects.flatMap((effect) => ("effects" in effect && effect.effects ? flattenEffects(effect.effects) : [effect]));
 }
@@ -375,7 +386,7 @@ function makeEffectChoice(effect: ActionEffect, actionSpace: ActionSpaceState, p
     type,
     label: effectLabel(effect, actionSpace),
     description: effect.description,
-    mode: effectMode(effect),
+    mode: effectMode(effect, actionSpace),
     effect,
     childChoices,
     disabled,
@@ -420,12 +431,13 @@ function disabledReason(type: string, actionSpace: ActionSpaceState, player?: Pl
   return actionSpace.name;
 }
 
-function effectMode(effect: ActionEffect): ActionEffectChoice["mode"] {
+function effectMode(effect: ActionEffect, actionSpace?: ActionSpaceState): ActionEffectChoice["mode"] {
   if (effect.type === "chooseOne" || effect.type === "chooseAny") {
-    const firstFarmChoice = effect.effects.find((candidate) => isFarmChoiceMode(effectMode(candidate)));
-    return firstFarmChoice ? effectMode(firstFarmChoice) : effect.effects.some((candidate) => directEffectTypes.has(candidate.type)) ? "direct" : "card";
+    const firstFarmChoice = effect.effects.find((candidate) => isFarmChoiceMode(effectMode(candidate, actionSpace)));
+    return firstFarmChoice ? effectMode(firstFarmChoice, actionSpace) : effect.effects.some((candidate) => directEffectTypes.has(candidate.type)) ? "direct" : "card";
   }
   const type = effect.type;
+  if (type === "takeAccumulated" && actionSpace && hasAccumulatedAnimal(actionSpace)) return "animal";
   if (type === "plowField") return "field";
   if (type === "buildRooms") return "room";
   if (type === "buildStables" || type === "sideJob") return "stable";
@@ -1111,7 +1123,7 @@ function FarmActionOverlay({
   return (
     <div className="modal-layer" role="dialog" aria-modal="true">
       <section className="game-modal farm-action-modal">
-        <span className="game-modal__eyebrow">农场行动</span>
+        <span className="game-modal__eyebrow">{needsFarmPicker ? "农场行动" : "行动选择"}</span>
         <h2>{actionSpace.name}</h2>
         <p>{actionLeadText(actionSpace, activeLeafChoice ?? effectiveEditingChoice, needsFarmPicker ? farmActionHelp(mode) : undefined, player)}</p>
         {choices.length > 1 ? (
