@@ -251,6 +251,7 @@ export function App() {
             grainToFood,
             vegetableToFood,
             feedingCookedAnimals,
+            [],
             Object.entries(harvestConversions).map(([improvementId, count]) => ({ improvementId, count })),
           )
         }
@@ -679,7 +680,12 @@ function HarvestFeedingOverlay({
           <HarvestConvertControl icon={<RESOURCE_ICONS.vegetable size={24} />} label="蔬菜转食物" max={player.resources.vegetable} onChange={onVegetableToFoodChange} value={normalizedVegetable} disabled={submitted} />
         </div>
         <HarvestMajorConversionPanel disabled={submitted} onChange={onHarvestConversionsChange} options={options} value={harvestConversions} />
-        <AnimalCookPanel cookedAnimals={cookedAnimals} disabled={submitted || !canCookAnimal(player)} onChange={onCookedAnimalsChange} player={player} />
+        <AnimalCookPanel
+          cookedAnimals={cookedAnimals}
+          disabled={submitted || !canCookAnimal(player)}
+          onChange={onCookedAnimalsChange}
+          player={player}
+        />
         <div className="harvest-summary">
           <ResourceBadge type="food" label="当前" count={player.resources.food} />
           <ResourceBadge type="food" label="转换后" count={foodAfterConversion} />
@@ -1071,6 +1077,7 @@ function translateAnimalName(animal: Animal): string {
   if (animal === "cattle") return "牛";
   return "羊";
 }
+
 
 function formatAnimalCounts(counts: Partial<Record<Animal, number>>): AnimalCookInput[] {
   return (["sheep", "boar", "cattle"] as const)

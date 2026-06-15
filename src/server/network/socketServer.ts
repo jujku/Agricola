@@ -344,6 +344,7 @@ export function attachSocketServer(httpServer: HttpServer): Server {
         grainToFood: payload.grainToFood,
         vegetableToFood: payload.vegetableToFood,
         cookedAnimals: payload.cookedAnimals,
+        cookedItems: payload.cookedItems,
         harvestConversions: payload.harvestConversions,
       });
       syncRoom(io, room);
@@ -390,7 +391,7 @@ export function attachSocketServer(httpServer: HttpServer): Server {
         return;
       }
 
-      room.game = engine.cookAnimals(room.game, payload.playerId, payload.improvementId, payload.cookedAnimals);
+      room.game = engine.cookWithMajorImprovement(room.game, payload.playerId, payload.improvementId, payload.cookedAnimals, payload.cookedItems ?? []);
       syncRoom(io, room);
       broadcastRoomLists(io);
     });

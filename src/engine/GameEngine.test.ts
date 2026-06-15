@@ -1247,6 +1247,29 @@ describe("GameEngine", () => {
     expect(cooked.lastError).toBeNull();
   });
 
+  it("cooks vegetables through a purchased fireplace", () => {
+    const { engine, state } = startTwoPlayerGame();
+    const prepared = {
+      ...state,
+      players: state.players.map((candidate, index) =>
+        index === 0
+          ? {
+              ...candidate,
+              resources: { ...candidate.resources, vegetable: 1 },
+              majorImprovements: ["fireplace-a"],
+            }
+          : candidate,
+      ),
+      majorImprovements: state.majorImprovements.map((card) => (card.id === "fireplace-a" ? { ...card, purchasedBy: "p1" } : card)),
+    };
+
+    const cooked = engine.cookWithMajorImprovement(prepared, "p1", "fireplace-a", [], [{ from: "vegetable", count: 1 }]);
+
+    expect(cooked.players[0].resources.vegetable).toBe(0);
+    expect(cooked.players[0].resources.food).toBe(prepared.players[0].resources.food + 2);
+    expect(cooked.lastError).toBeNull();
+  });
+
   it("uses the selected cooking improvement value when cooking newly gained animals", () => {
     const { engine, state } = startTwoPlayerGame();
     const prepared = {

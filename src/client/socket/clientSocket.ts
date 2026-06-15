@@ -7,6 +7,7 @@ import type {
   AnimalCookInput,
   AnimalOverflowResolution,
   AuthSuccessPayload,
+  CookInput,
   HarvestConversionInput,
   RoomLeftPayload,
   RoomListItem,
@@ -135,6 +136,7 @@ export function submitHarvestFeeding(
   grainToFood: number,
   vegetableToFood: number,
   cookedAnimals: AnimalCookInput[] = [],
+  cookedItems: CookInput[] = [],
   harvestConversions: HarvestConversionInput[] = [],
 ): void {
   socket.emit(SocketEvents.SUBMIT_HARVEST_FEEDING, {
@@ -143,6 +145,7 @@ export function submitHarvestFeeding(
     grainToFood,
     vegetableToFood,
     cookedAnimals,
+    cookedItems,
     harvestConversions,
   });
 }
@@ -162,12 +165,13 @@ export function submitHarvestBreeding(roomId: string, playerId: string, resoluti
   });
 }
 
-export function cookWithMajorImprovement(roomId: string, playerId: string, improvementId: string, cookedAnimals: AnimalCookInput[]): void {
+export function cookWithMajorImprovement(roomId: string, playerId: string, improvementId: string, cookedAnimals: AnimalCookInput[], cookedItems: CookInput[] = []): void {
   socket.emit(SocketEvents.COOK_WITH_MAJOR_IMPROVEMENT, {
     roomId,
     playerId,
     improvementId,
     cookedAnimals,
+    cookedItems,
   });
 }
 

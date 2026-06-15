@@ -1,6 +1,7 @@
 import type { GameState } from "../state/GameState";
-import type { AnimalCookInput, AnimalOverflowResolution, HarvestConversionInput } from "../shared/types";
+import type { AnimalCookInput, AnimalOverflowResolution, CookInput, HarvestConversionInput } from "../shared/types";
 import type { FarmAnimalType } from "../state/FarmState";
+import { majorImprovements } from "../config/majorImprovements";
 import { AnimalManager } from "./AnimalManager";
 import { CardManager } from "./CardManager";
 import { FarmManager } from "./FarmManager";
@@ -11,6 +12,7 @@ export interface HarvestFeedingInput {
   grainToFood: number;
   vegetableToFood: number;
   cookedAnimals?: AnimalCookInput[];
+  cookedItems?: CookInput[];
   harvestConversions?: HarvestConversionInput[];
 }
 
@@ -113,7 +115,9 @@ export class HarvestManager {
       throw new Error("蔬菜不足，不能转换。");
     }
 
-    const cookedPlayer = this.animalManager.cookAnimals(player, input.cookedAnimals ?? []);
+    const cookedPlayer = input.cookedItems && input.cookedItems.length > 0
+      ? this.animalManager.cookItemsWithImprovement(player, this.chooseCookingImprovement(player, input.cookedItems), input.cookedItems)
+      : this.animalManager.cookAnimals(player, input.cookedAnimals ?? []);
     const cropConvertedPlayer = {
       ...cookedPlayer,
       resources: {
@@ -142,7 +146,7 @@ export class HarvestManager {
       ),
       actionLog: [
         ...state.actionLog,
-        `${player.name} 确认收获喂食。谷物转食物 ${grainToFood}，蔬菜转食物 ${vegetableToFood}，烹饪 ${input.cookedAnimals?.reduce((sum, item) => sum + item.count, 0) ?? 0}，大设施转换 ${input.harvestConversions?.reduce((sum, item) => sum + item.count, 0) ?? 0}。`,
+        `${player.name} 确认收获喂食。谷物转食物 ${grainToFood}，蔬菜转食物 ${vegetableToFood}，烹饪 ${this.cookedItemCount(input)}，大设施转换 ${input.harvestConversions?.reduce((sum, item) => sum + item.count, 0) ?? 0}。`,
       ],
       lastError: null,
     };
@@ -219,6 +223,24 @@ export class HarvestManager {
     };
 
     return this.startBreeding(fedState);
+  }
+
+  private chooseCookingImprovement(player: GameState["players"][number], cookedItems: CookInput[]): string {
+    const available = player.majorImprovements.filter((id) => {
+      const card = majorImprovements.find((candidate) => candidate.id === id);
+      return card?.effects.some((effect) => effect.type === "cook" && cookedItems.some((item) => item.from === effect.from));
+    });
+    if (available.length === 0) {
+      throw new Error("没有可用的大设施进行烹饪。");
+    }
+    if (available.length > 1) {
+      throw new Error("请先选择用于烹饪的大设施。");
+    }
+    return available[0];
+  }
+
+  private cookedItemCount(input: HarvestFeedingInput): number {
+    return (input.cookedItems?.reduce((sum, item) => sum + item.count, 0) ?? 0) + (input.cookedAnimals?.reduce((sum, item) => sum + item.count, 0) ?? 0);
   }
 
   private startBreeding(state: GameState): GameState {

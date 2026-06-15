@@ -1,7 +1,7 @@
 import { animalCapacityRules } from "../config/animalCapacity";
 import type { AnimalKey } from "../config/baseActions";
 import { majorImprovements } from "../config/majorImprovements";
-import type { AnimalCookInput, AnimalPlacementInput } from "../shared/types";
+import type { AnimalCookInput, AnimalPlacementInput, CookInput } from "../shared/types";
 import type { PlayerState } from "../state/PlayerState";
 import { FarmManager } from "./FarmManager";
 
@@ -81,6 +81,14 @@ export class AnimalManager {
   }
 
   cookAnimalsWithImprovement(player: PlayerState, improvementId: string, cooked: AnimalCookInput[]): PlayerState {
+    return this.cookItemsWithImprovement(
+      player,
+      improvementId,
+      cooked.map((item) => ({ from: item.animal, count: item.count })),
+    );
+  }
+
+  cookItemsWithImprovement(player: PlayerState, improvementId: string, cooked: CookInput[]): PlayerState {
     if (!player.majorImprovements.includes(improvementId)) {
       throw new Error("玩家没有该大设施。");
     }
@@ -92,11 +100,25 @@ export class AnimalManager {
     let nextPlayer = player;
     cooked.forEach((item) => {
       if (item.count <= 0) return;
-      const effect = card.effects.find((candidate) => candidate.type === "cook" && candidate.from === item.animal);
+      const effect = card.effects.find((candidate) => candidate.type === "cook" && candidate.from === item.from);
       if (!effect || effect.type !== "cook") {
-        throw new Error("该大设施不能烹饪这种动物。");
+        throw new Error("该大设施不能烹饪这种资源。");
       }
-      nextPlayer = this.farmManager.removeAnimals(nextPlayer, item.animal, item.count);
+      if (item.from === "vegetable") {
+        if (nextPlayer.resources.vegetable < item.count) {
+          throw new Error("蔬菜不足，不能烹饪。");
+        }
+        nextPlayer = {
+          ...nextPlayer,
+          resources: {
+            ...nextPlayer.resources,
+            vegetable: nextPlayer.resources.vegetable - item.count,
+            food: nextPlayer.resources.food + item.count * effect.toFood,
+          },
+        };
+        return;
+      }
+      nextPlayer = this.farmManager.removeAnimals(nextPlayer, item.from, item.count);
       nextPlayer = {
         ...nextPlayer,
         resources: {

@@ -96,6 +96,8 @@ Legacy or placeholder events such as `PLAY_OCCUPATION`, `PLAY_IMPROVEMENT`, `BUI
 
 `SUBMIT_HARVEST_FEEDING` includes optional `harvestConversions` for manually selected harvest-time major improvement conversions such as joinery, pottery, and basketmaker workshop. These conversions must be chosen by the player during feeding; do not auto-apply them at harvest finish.
 
+Major improvement cooking payloads may include `cookedItems` for non-animal cook targets such as vegetables. Keep `cookedAnimals` for animal-only compatibility, but use `cookedItems` when a specific major improvement should cook vegetables through the same socket/engine path.
+
 ## Build, Test, and Development Commands
 
 - `npm run dev`: start the Vite client on all interfaces.

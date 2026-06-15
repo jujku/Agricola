@@ -1,6 +1,6 @@
 import type { GameState } from "../state/GameState";
 import type { PlayerState, ResourceState, AnimalState, WorkerState } from "../state/PlayerState";
-import type { ActionInput, AnimalOverflowResolution } from "../shared/types";
+import type { ActionInput, AnimalOverflowResolution, CookInput } from "../shared/types";
 import { majorImprovements } from "../config/majorImprovements";
 import { ActionResolver } from "./ActionResolver";
 import { AnimalManager } from "./AnimalManager";
@@ -171,13 +171,21 @@ export class GameEngine {
   }
 
   cookAnimals(state: GameState, playerId: string, improvementId: string, cookedAnimals: Array<{ animal: "sheep" | "boar" | "cattle"; count: number }>): GameState {
+    return this.cookWithMajorImprovement(state, playerId, improvementId, cookedAnimals);
+  }
+
+  cookWithMajorImprovement(state: GameState, playerId: string, improvementId: string, cookedAnimals: Array<{ animal: "sheep" | "boar" | "cattle"; count: number }>, cookedItems: CookInput[] = []): GameState {
     return this.guard(
       () => ({
         ...state,
-        players: state.players.map((player) => (player.id === playerId ? this.animalManager.cookAnimalsWithImprovement(player, improvementId, cookedAnimals) : player)),
+        players: state.players.map((player) =>
+          player.id === playerId
+            ? this.animalManager.cookItemsWithImprovement(player, improvementId, [...cookedAnimals.map((item) => ({ from: item.animal, count: item.count })), ...cookedItems])
+            : player,
+        ),
         actionLog: [
           ...state.actionLog,
-          `${state.players.find((player) => player.id === playerId)?.name ?? playerId} 使用大设施烹饪动物。`,
+          `${state.players.find((player) => player.id === playerId)?.name ?? playerId} 使用大设施烹饪。`,
         ],
         lastError: null,
       }),

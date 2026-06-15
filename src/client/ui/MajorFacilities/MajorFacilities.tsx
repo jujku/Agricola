@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { majorImprovements, type MajorImprovementDefinition } from "../../../config/majorImprovements";
 import { calculateMajorImprovementScoreDetail } from "../../../shared/majorImprovementScoring";
-import type { AnimalCookInput } from "../../../shared/types";
+import type { AnimalCookInput, CookInput } from "../../../shared/types";
 import type { GameState } from "../../../state/GameState";
 import type { PlayerState } from "../../../state/PlayerState";
 import basketmakerWorkshopArtUrl from "../../assets/major-facilities/basketmaker-workshop.png";
@@ -82,9 +82,9 @@ export function MajorFacilities({ game, isOwnPlayer, player, roomId }: MajorFaci
           card={activeFacility}
           isOwnPlayer={isOwnPlayer}
           onClose={() => setActiveFacilityId(null)}
-          onCook={(cookedAnimals) => {
+          onCook={(cookedAnimals, cookedItems) => {
             if (!roomId || !player) return;
-            cookWithMajorImprovement(roomId, player.id, activeFacility.id, cookedAnimals);
+            cookWithMajorImprovement(roomId, player.id, activeFacility.id, cookedAnimals, cookedItems);
             setActiveFacilityId(null);
           }}
           player={player}
@@ -203,12 +203,13 @@ function MajorFacilityUseOverlay({
   card: MajorImprovementDefinition;
   isOwnPlayer: boolean;
   onClose: () => void;
-  onCook: (cookedAnimals: AnimalCookInput[]) => void;
+  onCook: (cookedAnimals: AnimalCookInput[], cookedItems: CookInput[]) => void;
   player: PlayerState;
 }) {
   const [cookedAnimals, setCookedAnimals] = useState<AnimalCookInput[]>([]);
-  const cookEffects = card.effects.filter((effect) => effect.type === "cook" && (effect.from === "sheep" || effect.from === "boar" || effect.from === "cattle"));
-  const cookedTotal = cookedAnimals.reduce((sum, item) => sum + item.count * cookValue(card, item.animal), 0);
+  const [cookedVegetable, setCookedVegetable] = useState(0);
+  const cookEffects = card.effects.filter((effect) => effect.type === "cook");
+  const cookedTotal = cookedAnimals.reduce((sum, item) => sum + item.count * cookValue(card, item.animal), 0) + cookedVegetable * cookVegetableValue(card);
   const canCook = isOwnPlayer && cookEffects.length > 0;
 
   return (
@@ -219,6 +220,22 @@ function MajorFacilityUseOverlay({
         <EffectRows card={card} compact />
         {canCook ? (
           <div className="harvest-controls">
+            {cookVegetableValue(card) > 0 ? (
+              <label className="harvest-control harvest-control--with-icon">
+                <RESOURCE_ICONS.vegetable size={24} />
+                <span>
+                  蔬菜烹饪
+                  <small>每个 {cookVegetableValue(card)} 食物，最多 {player.resources.vegetable}</small>
+                </span>
+                <input
+                  max={player.resources.vegetable}
+                  min="0"
+                  type="number"
+                  value={cookedVegetable}
+                  onChange={(event) => setCookedVegetable(clampNumber(Number(event.target.value), 0, player.resources.vegetable))}
+                />
+              </label>
+            ) : null}
             {(["sheep", "boar", "cattle"] as const).map((animal) => {
               const value = cookedAnimals.find((item) => item.animal === animal)?.count ?? 0;
               const max = player.animals[animal];
@@ -251,7 +268,7 @@ function MajorFacilityUseOverlay({
             关闭
           </button>
           {canCook ? (
-            <button disabled={cookedAnimals.length === 0} onClick={() => onCook(cookedAnimals)}>
+            <button disabled={cookedAnimals.length === 0 && cookedVegetable === 0} onClick={() => onCook(cookedAnimals, cookedVegetable > 0 ? [{ from: "vegetable", count: cookedVegetable }] : [])}>
               确认烹饪
             </button>
           ) : null}
@@ -372,7 +389,7 @@ function BonusRule({
   const visibleRanges = ranges.filter((range) => range.points > 0);
   return (
     <div className="major-facility-rule major-facility-rule--bonus">
-      <IconGroup items={[{ type: resource, count: visibleRanges[0]?.min ?? 1 }]} />
+      <IconOnly type={resource} />
       <span className="major-facility-arrow">→</span>
       <span className="major-facility-bonus-ranges">
         {visibleRanges.map((range) => (
@@ -402,6 +419,18 @@ function IconGroup({ items }: { items: Array<{ type: string; count: number }> })
           </span>
         );
       })}
+    </span>
+  );
+}
+
+function IconOnly({ type }: { type: string }) {
+  if (!isResourceIconKey(type)) return null;
+  const Icon = RESOURCE_ICONS[type];
+  return (
+    <span className="major-facility-icon-group">
+      <span className="major-facility-icon-count">
+        <Icon size={22} />
+      </span>
     </span>
   );
 }
@@ -467,6 +496,11 @@ function setCookedAnimalCount(cookedAnimals: AnimalCookInput[], animal: Animal, 
   const next = cookedAnimals.filter((item) => item.animal !== animal);
   if (count > 0) next.push({ animal, count });
   return next;
+}
+
+function cookVegetableValue(card: MajorImprovementDefinition): number {
+  const effect = card.effects.find((candidate) => candidate.type === "cook" && candidate.from === "vegetable");
+  return effect?.type === "cook" ? effect.toFood : 0;
 }
 
 function clampNumber(value: number, min: number, max: number): number {

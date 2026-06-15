@@ -67,6 +67,7 @@ export interface SubmitHarvestFeedingPayload {
   grainToFood: number;
   vegetableToFood: number;
   cookedAnimals?: AnimalCookInput[];
+  cookedItems?: CookInput[];
   harvestConversions?: HarvestConversionInput[];
 }
 
@@ -81,6 +82,7 @@ export interface CookWithMajorImprovementPayload {
   playerId: string;
   improvementId: string;
   cookedAnimals: AnimalCookInput[];
+  cookedItems?: CookInput[];
 }
 
 export interface AdminRoomPayload {
@@ -133,6 +135,11 @@ export interface AnimalPlacementInput {
 
 export interface AnimalCookInput {
   animal: FarmAnimalType;
+  count: number;
+}
+
+export interface CookInput {
+  from: "vegetable" | FarmAnimalType;
   count: number;
 }
 
