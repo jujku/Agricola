@@ -1,6 +1,6 @@
 import { majorImprovements, type MajorImprovementDefinition } from "../config/majorImprovements";
 import type { ResourceKey } from "../config/baseActions";
-import type { ActionInput } from "../shared/types";
+import type { ActionInput, HarvestConversionInput } from "../shared/types";
 import type { GameState } from "../state/GameState";
 import type { PlayerState } from "../state/PlayerState";
 import { FarmManager } from "./FarmManager";
@@ -107,22 +107,42 @@ export class CardManager {
     };
   }
 
-  applyHarvestConversions(player: PlayerState): PlayerState {
-    return player.majorImprovements.reduce((currentPlayer, cardId) => {
-      const card = majorImprovements.find((candidate) => candidate.id === cardId);
+  applyHarvestConversions(player: PlayerState, conversions: HarvestConversionInput[]): PlayerState {
+    const totals = conversions.reduce<Map<string, number>>((summary, conversion) => {
+      summary.set(conversion.improvementId, (summary.get(conversion.improvementId) ?? 0) + conversion.count);
+      return summary;
+    }, new Map());
+
+    return Array.from(totals.entries()).reduce((currentPlayer, [improvementId, count]) => {
+      const amount = Math.floor(count);
+      if (!Number.isFinite(amount) || amount < 0) {
+        throw new Error("大设施收获转换数量必须是非负整数。");
+      }
+      if (amount !== count) {
+        throw new Error("大设施收获转换数量必须是非负整数。");
+      }
+      if (amount === 0) return currentPlayer;
+      if (amount > 1) {
+        throw new Error("每个大设施每次收获最多转换一次。");
+      }
+      if (!currentPlayer.majorImprovements.includes(improvementId)) {
+        throw new Error("玩家没有该收获转换大设施。");
+      }
+      const card = majorImprovements.find((candidate) => candidate.id === improvementId);
       const effect = card?.effects.find((candidate) => candidate.type === "harvestConvert");
       if (!effect || effect.type !== "harvestConvert") {
-        return currentPlayer;
+        throw new Error("该大设施不能在收获喂食时转换资源。");
       }
-      if (currentPlayer.resources[effect.resource] < effect.amount) {
-        return currentPlayer;
+      const cost = effect.amount * amount;
+      if (currentPlayer.resources[effect.resource] < cost) {
+        throw new Error("资源不足，不能使用大设施收获转换。");
       }
       return {
         ...currentPlayer,
         resources: {
           ...currentPlayer.resources,
-          [effect.resource]: currentPlayer.resources[effect.resource] - effect.amount,
-          food: currentPlayer.resources.food + effect.food,
+          [effect.resource]: currentPlayer.resources[effect.resource] - cost,
+          food: currentPlayer.resources.food + effect.food * amount,
         },
       };
     }, player);

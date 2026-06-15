@@ -58,6 +58,15 @@ The game should be data-driven:
 
 Avoid hard-coded rule branches such as `if (cardId === "joinery")` when the behavior can be represented as configuration, trigger, or effect data.
 
+Animal housing state is intentionally location-specific:
+
+- `farm.animalHousing.house` stores the single animal allowed in the home area.
+- `farm.animalHousing.stables` stores animals only for unfenced standalone stables.
+- `farm.animalHousing.cells` stores animals placed in specific pasture cells, including animals that were in a standalone stable before that stable was fenced into a pasture.
+- `farm.pastures[].animalType` and `animalCount` are derived pasture summaries. When changing fence or pasture logic, keep these summaries in sync with the location-specific housing data.
+
+Major improvement scoring bonuses are shared between engine scoring and client previews through `src/shared/majorImprovementScoring.ts`. Do not duplicate workshop bonus calculations in UI-only code; realtime score, facility display, and final scoring should stay consistent.
+
 ## Current Server Behavior
 
 - Normal rooms use numeric room ids.
@@ -84,6 +93,8 @@ Important active events include:
 - Admin test room: `ADMIN_RESTART_TEST_ROOM`, `ADMIN_ADVANCE_ROUND`, `ADMIN_ADJUST_RESOURCE`.
 
 Legacy or placeholder events such as `PLAY_OCCUPATION`, `PLAY_IMPROVEMENT`, `BUILD_ROOMS`, `BUILD_FENCES`, `RENOVATE`, and `FAMILY_GROWTH` are still present for compatibility and routing, but new UI should prefer the unified `PLACE_WORKER` flow when executing action spaces.
+
+`SUBMIT_HARVEST_FEEDING` includes optional `harvestConversions` for manually selected harvest-time major improvement conversions such as joinery, pottery, and basketmaker workshop. These conversions must be chosen by the player during feeding; do not auto-apply them at harvest finish.
 
 ## Build, Test, and Development Commands
 

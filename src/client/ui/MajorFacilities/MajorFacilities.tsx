@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { majorImprovements, type MajorImprovementDefinition } from "../../../config/majorImprovements";
+import { calculateMajorImprovementScoreDetail } from "../../../shared/majorImprovementScoring";
 import type { AnimalCookInput } from "../../../shared/types";
 import type { GameState } from "../../../state/GameState";
 import type { PlayerState } from "../../../state/PlayerState";
@@ -67,7 +68,7 @@ export function MajorFacilities({ game, isOwnPlayer, player, roomId }: MajorFaci
             <button key={card.id} className="owned-facility-chip" onClick={() => setActiveFacilityId(card.id)}>
               {card.name}
               <small>
-                <VictoryPointIcon size={18} /> × {card.victoryPoints}
+                <MajorFacilityScoreInline card={card} player={player} size={18} />
               </small>
             </button>
           ))}
@@ -169,7 +170,7 @@ function MajorFacilityCard({
         <h3>{card.name}</h3>
         <div className="major-facility-card__meta">
           <span className="major-facility-vp">
-            <VictoryPointIcon size={22} /> × {card.victoryPoints}
+            <MajorFacilityScoreInline card={card} player={player} size={22} />
           </span>
           <CostList bundle={card.cost} />
         </div>
@@ -401,6 +402,24 @@ function IconGroup({ items }: { items: Array<{ type: string; count: number }> })
           </span>
         );
       })}
+    </span>
+  );
+}
+
+function MajorFacilityScoreInline({ card, player, size }: { card: MajorImprovementDefinition; player: PlayerState | null; size: number }) {
+  const detail = player?.majorImprovements.includes(card.id) ? calculateMajorImprovementScoreDetail(player, card.id) : null;
+  const total = detail?.totalPoints ?? card.victoryPoints;
+  const bonus = detail?.bonusPoints ?? 0;
+  const ResourceIcon = detail?.bonusResource ? RESOURCE_ICONS[detail.bonusResource] : null;
+  return (
+    <span className={`major-facility-score-inline ${bonus > 0 ? "major-facility-score-inline--bonus" : ""}`}>
+      <VictoryPointIcon size={size} /> × {total}
+      {bonus > 0 && ResourceIcon ? (
+        <small>
+          {detail?.basePoints}+{bonus}
+          <ResourceIcon size={14} />×{detail?.bonusResourceCount ?? 0}
+        </small>
+      ) : null}
     </span>
   );
 }

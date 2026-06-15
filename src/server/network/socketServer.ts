@@ -344,6 +344,7 @@ export function attachSocketServer(httpServer: HttpServer): Server {
         grainToFood: payload.grainToFood,
         vegetableToFood: payload.vegetableToFood,
         cookedAnimals: payload.cookedAnimals,
+        harvestConversions: payload.harvestConversions,
       });
       syncRoom(io, room);
 

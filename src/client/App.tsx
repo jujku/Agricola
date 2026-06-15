@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { majorImprovements } from "../config/majorImprovements";
 import type { AnimalCookInput, AnimalOverflowResolution, RoomListItem } from "../shared/types";
 import {
   adjustAdminResource,
@@ -30,7 +31,15 @@ import { getPlayerColor, getPlayerColorById } from "./ui/VisualSystem/playerColo
 const emptyPlayers: NonNullable<ReturnType<typeof useGameStore.getState>["game"]>["players"] = [];
 type Player = (typeof emptyPlayers)[number];
 type Animal = AnimalCookInput["animal"];
-type BadgeType = "grain" | "vegetable" | "food" | "begging" | Animal;
+type BadgeType = "wood" | "clay" | "reed" | "stone" | "grain" | "vegetable" | "food" | "begging" | Animal;
+type HarvestConversionOption = {
+  cardId: string;
+  cardName: string;
+  resource: BadgeType;
+  amount: number;
+  food: number;
+  max: number;
+};
 type AdminAdjustKey = Parameters<typeof adjustAdminResource>[2];
 
 export function App() {
@@ -45,6 +54,7 @@ export function App() {
   const [grainToFood, setGrainToFood] = useState(0);
   const [vegetableToFood, setVegetableToFood] = useState(0);
   const [feedingCookedAnimals, setFeedingCookedAnimals] = useState<AnimalCookInput[]>([]);
+  const [harvestConversions, setHarvestConversions] = useState<Record<string, number>>({});
   const [breedingCookedAnimals, setBreedingCookedAnimals] = useState<AnimalCookInput[]>([]);
   const [breedingPlacements, setBreedingPlacements] = useState<AnimalOverflowResolution["placements"]>([]);
 
@@ -55,6 +65,18 @@ export function App() {
       setViewingPlayerId(username ?? game.players[0]?.id ?? null);
     }
   }, [game, username, viewingPlayerId]);
+  useEffect(() => {
+    if (game?.phase !== "HARVEST" || game.stage !== "HARVEST_FEEDING" || !game.harvestFeeding) return;
+    setGrainToFood(0);
+    setVegetableToFood(0);
+    setFeedingCookedAnimals([]);
+    setHarvestConversions({});
+  }, [game?.harvestFeeding?.round]);
+  useEffect(() => {
+    if (game?.phase !== "HARVEST" || game.stage !== "HARVEST_BREEDING" || !game.harvestBreeding) return;
+    setBreedingCookedAnimals([]);
+    setBreedingPlacements([]);
+  }, [game?.harvestBreeding?.round]);
 
   if (!username) {
     return (
@@ -217,9 +239,21 @@ export function App() {
       <HarvestFeedingOverlay
         cookedAnimals={feedingCookedAnimals}
         grainToFood={grainToFood}
+        harvestConversions={harvestConversions}
         onCookedAnimalsChange={setFeedingCookedAnimals}
         onGrainToFoodChange={setGrainToFood}
-        onSubmit={() => roomId && submitHarvestFeeding(roomId, username, grainToFood, vegetableToFood, feedingCookedAnimals)}
+        onHarvestConversionsChange={setHarvestConversions}
+        onSubmit={() =>
+          roomId &&
+          submitHarvestFeeding(
+            roomId,
+            username,
+            grainToFood,
+            vegetableToFood,
+            feedingCookedAnimals,
+            Object.entries(harvestConversions).map(([improvementId, count]) => ({ improvementId, count })),
+          )
+        }
         onVegetableToFoodChange={setVegetableToFood}
         open={game.phase === "HARVEST" && Boolean(game.harvestFeeding)}
         player={myPlayer}
@@ -566,8 +600,10 @@ function HarvestFieldOverlay({
 function HarvestFeedingOverlay({
   cookedAnimals,
   grainToFood,
+  harvestConversions,
   onCookedAnimalsChange,
   onGrainToFoodChange,
+  onHarvestConversionsChange,
   onSubmit,
   onVegetableToFoodChange,
   open,
@@ -579,8 +615,10 @@ function HarvestFeedingOverlay({
 }: {
   cookedAnimals: AnimalCookInput[];
   grainToFood: number;
+  harvestConversions: Record<string, number>;
   onCookedAnimalsChange: (value: AnimalCookInput[]) => void;
   onGrainToFoodChange: (value: number) => void;
+  onHarvestConversionsChange: (value: Record<string, number>) => void;
   onSubmit: () => void;
   onVegetableToFoodChange: (value: number) => void;
   open: boolean;
@@ -590,18 +628,42 @@ function HarvestFeedingOverlay({
   submittedPlayerIds: string[];
   vegetableToFood: number;
 }) {
+  const options = player ? getHarvestConversionOptions(player) : [];
   useEffect(() => {
     if (!open || !player || submitted) return;
     onGrainToFoodChange(clampNumber(grainToFood, 0, player.resources.grain));
     onVegetableToFoodChange(clampNumber(vegetableToFood, 0, player.resources.vegetable));
-  }, [open, player?.id, player?.resources.grain, player?.resources.vegetable, submitted]);
+    const normalized = options.reduce<Record<string, number>>((next, option) => {
+      const count = clampNumber(harvestConversions[option.cardId] ?? 0, 0, option.max);
+      if (count > 0) next[option.cardId] = count;
+      return next;
+    }, {});
+    if (JSON.stringify(normalized) !== JSON.stringify(harvestConversions)) {
+      onHarvestConversionsChange(normalized);
+    }
+  }, [
+    open,
+    player?.id,
+    player?.resources.grain,
+    player?.resources.vegetable,
+    player?.resources.wood,
+    player?.resources.clay,
+    player?.resources.reed,
+    harvestConversions,
+    onHarvestConversionsChange,
+    onGrainToFoodChange,
+    onVegetableToFoodChange,
+    options,
+    submitted,
+  ]);
 
   if (!open || !player) return null;
 
   const normalizedGrain = clampNumber(grainToFood, 0, player.resources.grain);
   const normalizedVegetable = clampNumber(vegetableToFood, 0, player.resources.vegetable);
   const cookedFood = cookedAnimals.reduce((sum, item) => sum + item.count * cookValue(player, item.animal), 0);
-  const foodAfterConversion = player.resources.food + normalizedGrain + normalizedVegetable + cookedFood;
+  const harvestConversionFood = options.reduce((sum, option) => sum + clampNumber(harvestConversions[option.cardId] ?? 0, 0, option.max) * option.food, 0);
+  const foodAfterConversion = player.resources.food + normalizedGrain + normalizedVegetable + cookedFood + harvestConversionFood;
   const requiredFood = player.workers.length * 2;
   const beggingCards = Math.max(0, requiredFood - foodAfterConversion);
   const paidFood = Math.min(foodAfterConversion, requiredFood);
@@ -616,14 +678,15 @@ function HarvestFeedingOverlay({
           <HarvestConvertControl icon={<RESOURCE_ICONS.grain size={24} />} label="谷物转食物" max={player.resources.grain} onChange={onGrainToFoodChange} value={normalizedGrain} disabled={submitted} />
           <HarvestConvertControl icon={<RESOURCE_ICONS.vegetable size={24} />} label="蔬菜转食物" max={player.resources.vegetable} onChange={onVegetableToFoodChange} value={normalizedVegetable} disabled={submitted} />
         </div>
+        <HarvestMajorConversionPanel disabled={submitted} onChange={onHarvestConversionsChange} options={options} value={harvestConversions} />
         <AnimalCookPanel cookedAnimals={cookedAnimals} disabled={submitted || !canCookAnimal(player)} onChange={onCookedAnimalsChange} player={player} />
         <div className="harvest-summary">
           <ResourceBadge type="food" label="当前" count={player.resources.food} />
           <ResourceBadge type="food" label="转换后" count={foodAfterConversion} />
           <ResourceBadge type="food" label="烹饪" count={cookedFood} />
+          <ResourceBadge type="food" label="大设施" count={harvestConversionFood} />
           <ResourceBadge type="food" label="需要" count={requiredFood} />
-          <ResourceBadge type="food" label="将消耗" count={paidFood} />
-          <ResourceBadge type="begging" label="预计乞讨" count={beggingCards} strong />
+          <FeedingCostBadge paidFood={paidFood} beggingCards={beggingCards} />
         </div>
         <HarvestProgress players={players} submittedPlayerIds={submittedPlayerIds} />
         {submitted ? <strong className="harvest-waiting">已确认，等待其他玩家。</strong> : <button onClick={onSubmit}>确认喂食</button>}
@@ -690,6 +753,78 @@ function HarvestBreedingOverlay({
         {submitted ? <strong className="harvest-waiting">已确认，等待其他玩家。</strong> : <button onClick={onSubmit}>确认繁殖</button>}
       </section>
     </div>
+  );
+}
+
+function HarvestMajorConversionPanel({
+  disabled,
+  onChange,
+  options,
+  value,
+}: {
+  disabled: boolean;
+  onChange: (value: Record<string, number>) => void;
+  options: HarvestConversionOption[];
+  value: Record<string, number>;
+}) {
+  if (options.length === 0) return null;
+  return (
+    <div className="harvest-major-conversion-panel">
+      <strong>收获大设施转换</strong>
+      <div className="harvest-controls">
+        {options.map((option) => {
+          const ResourceIcon = RESOURCE_ICONS[option.resource];
+          const current = clampNumber(value[option.cardId] ?? 0, 0, option.max);
+          return (
+            <HarvestConvertControl
+              key={option.cardId}
+              disabled={disabled || option.max <= 0}
+              icon={<ResourceIcon size={24} />}
+              label={option.cardName}
+              max={option.max}
+              value={current}
+              onChange={(nextValue) => {
+                const normalized = clampNumber(nextValue, 0, option.max);
+                const next = { ...value };
+                if (normalized > 0) {
+                  next[option.cardId] = normalized;
+                } else {
+                  delete next[option.cardId];
+                }
+                onChange(next);
+              }}
+            />
+          );
+        })}
+      </div>
+      <div className="harvest-major-conversion-rules">
+        {options.map((option) => {
+          const ResourceIcon = RESOURCE_ICONS[option.resource];
+          return (
+            <span key={option.cardId}>
+              <ResourceIcon size={16} /> × {option.amount} → <RESOURCE_ICONS.food size={16} /> × {option.food}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function FeedingCostBadge({ beggingCards, paidFood }: { beggingCards: number; paidFood: number }) {
+  return (
+    <strong className="harvest-resource-badge harvest-resource-badge--combined">
+      <span>
+        <BadgeIcon type="food" />
+        将消耗
+        <b>{paidFood}</b>
+      </span>
+      <span>
+        <BadgeIcon type="begging" />
+        预计乞讨
+        <b>{beggingCards}</b>
+      </span>
+    </strong>
   );
 }
 
@@ -894,6 +1029,30 @@ function getBreedingTargets(player: Player, animal: Animal): Array<{ animal: Ani
     });
   });
   return targets;
+}
+
+function getHarvestConversionOptions(player: Player): HarvestConversionOption[] {
+  return player.majorImprovements.flatMap((cardId) => {
+    const card = majorImprovements.find((candidate) => candidate.id === cardId);
+    if (!card) return [];
+    const effect = card.effects.find((candidate) => candidate.type === "harvestConvert");
+    if (!effect || effect.type !== "harvestConvert" || !isBadgeType(effect.resource)) return [];
+    const max = player.resources[effect.resource] >= effect.amount ? 1 : 0;
+    return [
+      {
+        cardId: card.id,
+        cardName: card.name,
+        resource: effect.resource,
+        amount: effect.amount,
+        food: effect.food,
+        max,
+      },
+    ];
+  });
+}
+
+function isBadgeType(value: string): value is BadgeType {
+  return value in RESOURCE_ICONS;
 }
 
 function canCookAnimal(player: Player): boolean {

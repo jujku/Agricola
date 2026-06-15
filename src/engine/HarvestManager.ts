@@ -1,5 +1,5 @@
 import type { GameState } from "../state/GameState";
-import type { AnimalCookInput, AnimalOverflowResolution } from "../shared/types";
+import type { AnimalCookInput, AnimalOverflowResolution, HarvestConversionInput } from "../shared/types";
 import type { FarmAnimalType } from "../state/FarmState";
 import { AnimalManager } from "./AnimalManager";
 import { CardManager } from "./CardManager";
@@ -11,6 +11,7 @@ export interface HarvestFeedingInput {
   grainToFood: number;
   vegetableToFood: number;
   cookedAnimals?: AnimalCookInput[];
+  harvestConversions?: HarvestConversionInput[];
 }
 
 export class HarvestManager {
@@ -113,6 +114,16 @@ export class HarvestManager {
     }
 
     const cookedPlayer = this.animalManager.cookAnimals(player, input.cookedAnimals ?? []);
+    const cropConvertedPlayer = {
+      ...cookedPlayer,
+      resources: {
+        ...cookedPlayer.resources,
+        grain: cookedPlayer.resources.grain - grainToFood,
+        vegetable: cookedPlayer.resources.vegetable - vegetableToFood,
+        food: cookedPlayer.resources.food + grainToFood + vegetableToFood,
+      },
+    };
+    const harvestConvertedPlayer = this.cardManager.applyHarvestConversions(cropConvertedPlayer, input.harvestConversions ?? []);
     const convertedState: GameState = {
       ...state,
       harvestFeeding: {
@@ -123,20 +134,15 @@ export class HarvestManager {
         candidate.id === playerId
           ? {
               ...candidate,
-              resources: {
-                ...candidate.resources,
-                grain: candidate.resources.grain - grainToFood,
-                vegetable: candidate.resources.vegetable - vegetableToFood,
-                food: cookedPlayer.resources.food + grainToFood + vegetableToFood,
-              },
-              animals: cookedPlayer.animals,
-              farm: cookedPlayer.farm,
+              resources: harvestConvertedPlayer.resources,
+              animals: harvestConvertedPlayer.animals,
+              farm: harvestConvertedPlayer.farm,
             }
           : candidate,
       ),
       actionLog: [
         ...state.actionLog,
-        `${player.name} 确认收获喂食。谷物转食物 ${grainToFood}，蔬菜转食物 ${vegetableToFood}，烹饪 ${input.cookedAnimals?.reduce((sum, item) => sum + item.count, 0) ?? 0}。`,
+        `${player.name} 确认收获喂食。谷物转食物 ${grainToFood}，蔬菜转食物 ${vegetableToFood}，烹饪 ${input.cookedAnimals?.reduce((sum, item) => sum + item.count, 0) ?? 0}，大设施转换 ${input.harvestConversions?.reduce((sum, item) => sum + item.count, 0) ?? 0}。`,
       ],
       lastError: null,
     };
@@ -197,17 +203,16 @@ export class HarvestManager {
       stage: "HARVEST_FEEDING",
       harvestFeeding: null,
       players: state.players.map((player) => {
-        const converted = this.cardManager.applyHarvestConversions(player);
-        const requiredFood = converted.workers.length * 2;
-        const paidFood = Math.min(converted.resources.food, requiredFood);
+        const requiredFood = player.workers.length * 2;
+        const paidFood = Math.min(player.resources.food, requiredFood);
         const missingFood = requiredFood - paidFood;
         return {
-          ...converted,
+          ...player,
           resources: {
-            ...converted.resources,
-            food: converted.resources.food - paidFood,
+            ...player.resources,
+            food: player.resources.food - paidFood,
           },
-          beggingCards: converted.beggingCards + missingFood,
+          beggingCards: player.beggingCards + missingFood,
         };
       }),
       actionLog: [...state.actionLog, "喂养家庭并处理乞讨卡。"],

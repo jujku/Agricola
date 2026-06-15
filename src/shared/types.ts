@@ -67,6 +67,7 @@ export interface SubmitHarvestFeedingPayload {
   grainToFood: number;
   vegetableToFood: number;
   cookedAnimals?: AnimalCookInput[];
+  harvestConversions?: HarvestConversionInput[];
 }
 
 export interface SubmitHarvestBreedingPayload {
@@ -132,6 +133,11 @@ export interface AnimalPlacementInput {
 
 export interface AnimalCookInput {
   animal: FarmAnimalType;
+  count: number;
+}
+
+export interface HarvestConversionInput {
+  improvementId: string;
   count: number;
 }
 

@@ -1240,6 +1240,26 @@ button:hover {
   font-weight: 800;
 }
 
+.major-facility-score-inline {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 5px;
+}
+
+.major-facility-score-inline > small {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: #315f26;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.major-facility-score-inline--bonus {
+  color: var(--farm-ink);
+}
+
 .victory-point-icon {
   display: inline-block;
   object-fit: cover;
@@ -1686,6 +1706,12 @@ button:hover {
   font-weight: 900;
 }
 
+.final-score-row > strong {
+  grid-template-columns: auto 1fr;
+  justify-content: center;
+  gap: 6px;
+}
+
 .final-score-row > span {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -1698,6 +1724,18 @@ button:hover {
   color: var(--farm-muted);
   font-size: 11px;
   font-weight: 800;
+}
+
+.final-score-row__detail {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.final-score-row__detail span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .final-score-row b {
@@ -2508,6 +2546,38 @@ button:hover {
   gap: 8px;
 }
 
+.harvest-major-conversion-panel {
+  display: grid;
+  gap: 8px;
+  border: 2px dashed rgba(90, 55, 20, 0.45);
+  border-radius: 12px;
+  padding: 10px;
+  background: #fff7d8;
+}
+
+.harvest-major-conversion-panel > strong {
+  color: var(--farm-ink);
+  font-size: 14px;
+}
+
+.harvest-major-conversion-rules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.harvest-major-conversion-rules span {
+  border-radius: 999px;
+  padding: 4px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: var(--farm-paper);
+  color: var(--farm-muted);
+  font-size: 11px;
+  font-weight: 900;
+}
+
 .breeding-placement-list {
   display: flex;
   flex-wrap: wrap;
@@ -2551,6 +2621,18 @@ button:hover {
   background: var(--farm-stroke);
   color: var(--farm-paper-light);
   font-size: 12px;
+}
+
+.harvest-resource-badge--combined {
+  justify-content: center;
+  gap: 9px;
+  grid-column: 1 / -1;
+}
+
+.harvest-resource-badge--combined > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 
 @keyframes modal-pop {

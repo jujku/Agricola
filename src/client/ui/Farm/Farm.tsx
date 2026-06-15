@@ -1,4 +1,5 @@
 import type { PlayerState } from "../../../state/PlayerState";
+import type { FarmAnimalType } from "../../../state/FarmState";
 import {
   BoarIcon,
   CattleIcon,
@@ -102,7 +103,8 @@ function TileContent({ cell, player, playerColor, state, showWorker }: { cell?: 
 
   if (state === "room") {
     const Icon = cell.roomMaterial === "clay" ? ClayIcon : cell.roomMaterial === "stone" ? StoneIcon : WoodIcon;
-    const houseAnimal = player.farm.animalHousing.house.animal;
+    const showHouseAnimal = cell.col === 0 && cell.row === 1;
+    const houseAnimal = showHouseAnimal ? player.farm.animalHousing.house.animal : null;
     const HouseAnimalIcon = houseAnimal === "boar" ? BoarIcon : houseAnimal === "cattle" ? CattleIcon : SheepIcon;
     return (
       <div className={`farm-tile__room farm-tile__room--${cell.roomMaterial ?? "wood"}`}>
@@ -163,7 +165,19 @@ function TileContent({ cell, player, playerColor, state, showWorker }: { cell?: 
   return (
     <div className="farm-tile__standalone">
       <StableIcon size={30} />
+      <AnimalStack group={player.farm.animalHousing.stables.find((item) => item.row === cell.row && item.col === cell.col)} />
       <span>马厩</span>
+    </div>
+  );
+}
+
+function AnimalStack({ group }: { group?: { animal: FarmAnimalType | null; count: number } }) {
+  if (!group?.animal || group.count <= 0) return null;
+  const AnimalIcon = group.animal === "boar" ? BoarIcon : group.animal === "cattle" ? CattleIcon : SheepIcon;
+  return (
+    <div className="farm-tile__stack">
+      <AnimalIcon size={22} />
+      <strong>{group.count}</strong>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { GameState } from "../../../state/GameState";
 import type { ScoreBreakdown } from "../../../state/PlayerState";
 import { describeScoreValue, scoreRows, type ScoreKey } from "./scoringView";
+import { RESOURCE_ICONS } from "../VisualSystem/ResourceIcons";
 
 interface FinalScoreRevealProps {
   game: GameState;
@@ -41,10 +42,16 @@ export function FinalScoreReveal({ game }: FinalScoreRevealProps) {
           </div>
           {rows.slice(0, visibleRows).map((row) => (
             <div key={row.key} className="final-score-row" style={{ ["--player-count" as string]: game.players.length }}>
-              <strong>{row.label}</strong>
+              <strong>
+                <RowIcon icon={row.icon} />
+                <span>{row.label}</span>
+              </strong>
               {game.players.map((player) => (
                 <span key={player.id}>
-                  <small>{describeScoreValue(player, row.key)}</small>
+                  <small className="final-score-row__detail">
+                    <RowIcon icon={row.icon} size={14} />
+                    <span>{describeScoreValue(player, row.key)}</span>
+                  </small>
                   <b>{scoreValue(player.score, row.key)}</b>
                 </span>
               ))}
@@ -52,7 +59,10 @@ export function FinalScoreReveal({ game }: FinalScoreRevealProps) {
           ))}
           {completed ? (
             <div className="final-score-row final-score-row--total" style={{ ["--player-count" as string]: game.players.length }}>
-              <strong>总分</strong>
+              <strong>
+                <RowIcon icon="wood" />
+                <span>总分</span>
+              </strong>
               {game.players.map((player) => (
                 <span key={player.id} className={game.winnerIds.includes(player.id) ? "winner" : ""}>
                   <small>{game.winnerIds.includes(player.id) ? "冠军" : "完成"}</small>
@@ -76,6 +86,11 @@ export function FinalScoreReveal({ game }: FinalScoreRevealProps) {
       </section>
     </div>
   );
+}
+
+function RowIcon({ icon, size = 18 }: { icon: (typeof scoreRows)[number]["icon"]; size?: number }) {
+  const Icon = RESOURCE_ICONS[icon];
+  return <Icon size={size} />;
 }
 
 function scoreValue(score: ScoreBreakdown | null, key: ScoreKey): number {

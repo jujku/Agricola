@@ -121,6 +121,28 @@ describe("GameEngine", () => {
     expect(scored.winnerIds.length).toBeGreaterThan(0);
   });
 
+  it("scores workshop resource bonuses at game end", () => {
+    const { engine, state } = startTwoPlayerGame();
+    const ended = {
+      ...state,
+      round: 14,
+      phase: "HARVEST" as const,
+      players: state.players.map((player, index) => ({
+        ...player,
+        resources: index === 0 ? { ...player.resources, food: 10, wood: 3 } : { ...player.resources, food: 10 },
+        majorImprovements: index === 0 ? ["joinery"] : player.majorImprovements,
+      })),
+    };
+    let scored = engine.advancePhase(ended);
+    scored = confirmFieldHarvest(engine, scored);
+    scored = engine.submitHarvestFeeding(scored, "p1", { grainToFood: 0, vegetableToFood: 0 });
+    scored = engine.submitHarvestFeeding(scored, "p2", { grainToFood: 0, vegetableToFood: 0 });
+    scored = confirmBreeding(engine, scored);
+
+    expect(scored.players[0].score?.majorImprovements).toBe(2);
+    expect(scored.players[0].score?.bonusPoints).toBe(1);
+  });
+
   it("waits for player feeding choices during harvest", () => {
     const { engine, state } = startTwoPlayerGame();
     const harvest = engine.advancePhase({
@@ -207,6 +229,58 @@ describe("GameEngine", () => {
     expect(harvest.harvestFeeding).toBeNull();
     expect(harvest.players[0].beggingCards).toBe(0);
     expect(harvest.players[1].beggingCards).toBe(3);
+  });
+
+  it("uses workshop harvest conversions only when selected during feeding", () => {
+    const { engine, state } = startTwoPlayerGame();
+    let harvest = engine.advancePhase({
+      ...state,
+      round: 7,
+      phase: "HARVEST" as const,
+      players: state.players.map((player, index) => ({
+        ...player,
+        resources: index === 0 ? { ...player.resources, food: 0, wood: 1 } : { ...player.resources, food: 4 },
+        majorImprovements: index === 0 ? ["joinery"] : player.majorImprovements,
+      })),
+    });
+
+    harvest = confirmFieldHarvest(engine, harvest);
+    harvest = engine.submitHarvestFeeding(harvest, "p1", { grainToFood: 0, vegetableToFood: 0 });
+
+    expect(harvest.players[0].resources.wood).toBe(1);
+    expect(harvest.players[0].resources.food).toBe(0);
+    expect(harvest.players[0].beggingCards).toBe(0);
+
+    harvest = engine.submitHarvestFeeding(harvest, "p2", { grainToFood: 0, vegetableToFood: 0 });
+    harvest = confirmBreeding(engine, harvest);
+
+    expect(harvest.players[0].resources.wood).toBe(1);
+    expect(harvest.players[0].beggingCards).toBe(4);
+  });
+
+  it("applies selected workshop harvest conversions before feeding", () => {
+    const { engine, state } = startTwoPlayerGame();
+    let harvest = engine.advancePhase({
+      ...state,
+      round: 7,
+      phase: "HARVEST" as const,
+      players: state.players.map((player, index) => ({
+        ...player,
+        resources: index === 0 ? { ...player.resources, food: 0, wood: 1 } : { ...player.resources, food: 4 },
+        majorImprovements: index === 0 ? ["joinery"] : player.majorImprovements,
+      })),
+    });
+
+    harvest = confirmFieldHarvest(engine, harvest);
+    harvest = engine.submitHarvestFeeding(harvest, "p1", {
+      grainToFood: 0,
+      vegetableToFood: 0,
+      harvestConversions: [{ improvementId: "joinery", count: 1 }],
+    });
+
+    expect(harvest.players[0].resources.wood).toBe(0);
+    expect(harvest.players[0].resources.food).toBe(2);
+    expect(harvest.harvestFeeding?.submittedPlayerIds).toEqual(["p1"]);
   });
 
   it("does not reset a game after it has already started", () => {
@@ -1467,6 +1541,33 @@ describe("GameEngine", () => {
     expect(withSheep.farm.animalHousing.stables[0].count).toBe(1);
   });
 
+  it("keeps stable animals when the stable is fenced into a pasture", () => {
+    const farmManager = new FarmManager();
+    const { state } = startTwoPlayerGame();
+    let player = {
+      ...state.players[0],
+      resources: {
+        ...state.players[0].resources,
+        wood: 5,
+      },
+    };
+
+    player = farmManager.buildStables(player, [{ row: 0, col: 1 }], 1, 1);
+    player = farmManager.placeAnimals(player, "sheep", 1, [{ type: "stable", row: 0, col: 1, count: 1 }]);
+    const fenced = farmManager.buildFencesByEdges(player, [
+      { row: 0, col: 1, edge: "top" },
+      { row: 0, col: 1, edge: "right" },
+      { row: 0, col: 1, edge: "bottom" },
+      { row: 0, col: 1, edge: "left" },
+    ]);
+
+    expect(fenced.animals.sheep).toBe(1);
+    expect(fenced.farm.pastures[0].animalType).toBe("sheep");
+    expect(fenced.farm.pastures[0].animalCount).toBe(1);
+    expect(fenced.farm.animalHousing.stables[0]).toMatchObject({ row: 0, col: 1, animal: null, count: 0 });
+    expect(fenced.farm.animalHousing.cells).toContainEqual({ row: 0, col: 1, animal: "sheep", count: 1 });
+  });
+
   it("rejects mixed animals inside one pasture", () => {
     const farmManager = new FarmManager();
     const { state } = startTwoPlayerGame();
@@ -1511,6 +1612,55 @@ describe("GameEngine", () => {
 
     expect(withSheep.farm.animalHousing.cells).toContainEqual({ row: 1, col: 2, animal: "sheep", count: 2 });
     expect(withSheep.farm.pastures[0].animalCount).toBe(2);
+  });
+
+  it("limits animal placement by individual pasture cell capacity", () => {
+    const farmManager = new FarmManager();
+    const { state } = startTwoPlayerGame();
+    const player = {
+      ...state.players[0],
+      resources: {
+        ...state.players[0].resources,
+        wood: 6,
+      },
+    };
+    const fenced = farmManager.buildFencesByEdges(player, [
+      { row: 0, col: 2, edge: "top" },
+      { row: 0, col: 2, edge: "left" },
+      { row: 0, col: 2, edge: "right" },
+      { row: 1, col: 2, edge: "left" },
+      { row: 1, col: 2, edge: "right" },
+      { row: 1, col: 2, edge: "bottom" },
+    ]);
+
+    expect(() => farmManager.placeAnimals(fenced, "sheep", 4, [{ type: "pasture", pastureId: fenced.farm.pastures[0].id, row: 0, col: 2, count: 4 }])).toThrow();
+  });
+
+  it("does not keep an animal type on an empty pasture after splitting a pasture", () => {
+    const farmManager = new FarmManager();
+    const { state } = startTwoPlayerGame();
+    let player = {
+      ...state.players[0],
+      resources: {
+        ...state.players[0].resources,
+        wood: 7,
+      },
+    };
+    player = farmManager.buildFencesByEdges(player, [
+      { row: 0, col: 2, edge: "top" },
+      { row: 0, col: 2, edge: "left" },
+      { row: 0, col: 2, edge: "right" },
+      { row: 1, col: 2, edge: "left" },
+      { row: 1, col: 2, edge: "right" },
+      { row: 1, col: 2, edge: "bottom" },
+    ]);
+    player = farmManager.placeAnimals(player, "sheep", 2, [{ type: "pasture", pastureId: player.farm.pastures[0].id, row: 0, col: 2, count: 2 }]);
+
+    const split = farmManager.buildFencesByEdges(player, [{ row: 0, col: 2, edge: "bottom" }]);
+    const emptyPasture = split.farm.pastures.find((pasture) => pasture.animalCount === 0);
+
+    expect(split.farm.pastures).toHaveLength(2);
+    expect(emptyPasture?.animalType).toBeNull();
   });
 
   it("uses animalChoice to resolve one animal from a multi-animal action", () => {

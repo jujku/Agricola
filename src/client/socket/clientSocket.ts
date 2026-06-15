@@ -7,6 +7,7 @@ import type {
   AnimalCookInput,
   AnimalOverflowResolution,
   AuthSuccessPayload,
+  HarvestConversionInput,
   RoomLeftPayload,
   RoomListItem,
   RoomSnapshot,
@@ -128,13 +129,21 @@ export function placeWorker(roomId: string, playerId: string, workerId: string, 
   });
 }
 
-export function submitHarvestFeeding(roomId: string, playerId: string, grainToFood: number, vegetableToFood: number, cookedAnimals: AnimalCookInput[] = []): void {
+export function submitHarvestFeeding(
+  roomId: string,
+  playerId: string,
+  grainToFood: number,
+  vegetableToFood: number,
+  cookedAnimals: AnimalCookInput[] = [],
+  harvestConversions: HarvestConversionInput[] = [],
+): void {
   socket.emit(SocketEvents.SUBMIT_HARVEST_FEEDING, {
     roomId,
     playerId,
     grainToFood,
     vegetableToFood,
     cookedAnimals,
+    harvestConversions,
   });
 }
 

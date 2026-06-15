@@ -1,3 +1,4 @@
+import { animalCapacityRules } from "../config/animalCapacity";
 import type { ResourceKey } from "../config/baseActions";
 import type { CellPosition } from "../shared/types";
 import type { AnimalGroup, FarmAnimalType, FarmCell, FarmState, FenceEdge, FenceEdgeSide, FenceSegment, RoomMaterial } from "../state/FarmState";
@@ -347,9 +348,11 @@ export class FarmManager {
 
       const pastureId = `pasture-${pastures.length + 1}`;
       const previous = this.findMatchingPasture(farm.pastures, group);
-      const animalCells = farm.animalHousing.cells.filter((item) => group.some((cell) => cell.row === item.row && cell.col === item.col));
-      const animalType = animalCells.find((item) => item.animal)?.animal ?? previous?.animalType ?? null;
-      const animalCount = animalCells.reduce((sum, item) => sum + item.count, 0);
+      const groupKeys = new Set(group.map((cell) => this.positionKey(cell)));
+      const animalCells = farm.animalHousing.cells.filter((item) => groupKeys.has(this.positionKey(item)));
+      const stableAnimalCells = farm.animalHousing.stables.filter((item) => item.count > 0 && groupKeys.has(this.positionKey(item)));
+      const animalType = animalCells.find((item) => item.animal)?.animal ?? stableAnimalCells.find((item) => item.animal)?.animal ?? null;
+      const animalCount = animalCells.reduce((sum, item) => sum + item.count, 0) + stableAnimalCells.reduce((sum, item) => sum + item.count, 0);
       pastures.push({
         id: previous?.id ?? pastureId,
         cells: group,
@@ -362,21 +365,28 @@ export class FarmManager {
 
     const pastureByCell = new Map<string, string>();
     pastures.forEach((pasture) => pasture.cells.forEach((cell) => pastureByCell.set(this.positionKey(cell), pasture.id)));
+    const animalHousing = this.recalculateAnimalHousing(farm, pastures);
+    const recalculatedPastures = pastures.map((pasture) => {
+      const animalCells = animalHousing.cells.filter((item) => pasture.cells.some((cell) => cell.row === item.row && cell.col === item.col));
+      const previous = farm.pastures.find((candidate) => candidate.id === pasture.id);
+      return {
+        ...pasture,
+        animalType: animalCells.find((item) => item.animal)?.animal ?? null,
+        animalCount: animalCells.reduce((sum, item) => sum + item.count, 0),
+      };
+    });
 
     return {
       ...farm,
       fenceSegments: this.uniqueSegments(farm.fenceSegments),
       fences: this.uniqueEdges(farm.fenceSegments.map((segment) => this.segmentToEdge(segment))),
       fencesUsed: this.uniqueSegments(farm.fenceSegments).length,
-      pastures,
+      pastures: recalculatedPastures,
       cells: farm.cells.map((cell) => ({
         ...cell,
         pastureId: pastureByCell.get(this.positionKey(cell)) ?? null,
       })),
-      animalHousing: {
-        ...farm.animalHousing,
-        cells: farm.animalHousing.cells.filter((item) => item.count > 0),
-      },
+      animalHousing,
     };
   }
 
@@ -412,7 +422,7 @@ export class FarmManager {
         }
         const updated = this.addToGroup({ animal: pasture.animalType, count: pasture.animalCount }, animal, placement.count, pasture.capacity);
         const existingCell = farm.animalHousing.cells.find((candidate) => candidate.row === placement.row && candidate.col === placement.col);
-        const updatedCell = this.addToGroup(existingCell ?? { row: placement.row, col: placement.col, animal: null, count: 0 }, animal, placement.count, pasture.capacity);
+        const updatedCell = this.addToGroup(existingCell ?? { row: placement.row, col: placement.col, animal: null, count: 0 }, animal, placement.count, this.cellPastureCapacity(farm, placement.row, placement.col));
         farm = {
           ...farm,
           animalHousing: {
@@ -797,6 +807,34 @@ export class FarmManager {
   private calculatePastureCapacity(farm: FarmState, cells: CellPosition[]): number {
     const stableCount = cells.filter((position) => farm.cells.some((cell) => cell.row === position.row && cell.col === position.col && cell.stable)).length;
     return cells.length * 2 * (stableCount > 0 ? 2 : 1);
+  }
+
+  private cellPastureCapacity(farm: FarmState, row: number, col: number): number {
+    const hasStable = farm.cells.some((cell) => cell.row === row && cell.col === col && cell.stable);
+    return hasStable ? animalCapacityRules.pastureWithStables[1] : animalCapacityRules.pastureBase;
+  }
+
+  private recalculateAnimalHousing(farm: FarmState, pastures: FarmState["pastures"]): FarmState["animalHousing"] {
+    const animalHousing = farm.animalHousing;
+    let cells = animalHousing.cells.filter((item) => item.count > 0);
+    const pastureByCell = new Map<string, FarmState["pastures"][number]>();
+    pastures.forEach((pasture) => pasture.cells.forEach((cell) => pastureByCell.set(this.positionKey(cell), pasture)));
+
+    const stables = animalHousing.stables.map((stable) => {
+      if (stable.count <= 0) return stable;
+      const pasture = pastureByCell.get(this.positionKey(stable));
+      if (!pasture) return stable;
+      const existingCell = cells.find((cell) => cell.row === stable.row && cell.col === stable.col);
+      const group = this.addToGroup(existingCell ?? { row: stable.row, col: stable.col, animal: null, count: 0 }, stable.animal!, stable.count, this.cellPastureCapacity(farm, stable.row, stable.col));
+      cells = existingCell ? cells.map((cell) => (cell.row === stable.row && cell.col === stable.col ? group : cell)) : [...cells, group];
+      return { ...stable, animal: null, count: 0 };
+    });
+
+    return {
+      ...animalHousing,
+      stables,
+      cells,
+    };
   }
 
   private findMatchingPasture(pastures: FarmState["pastures"], cells: CellPosition[]) {

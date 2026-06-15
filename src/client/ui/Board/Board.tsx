@@ -1109,7 +1109,7 @@ function FarmActionOverlay({
       const alreadyPlaced = sumPlacements(current);
       const availableForPlacement = animalAmount - cookedAnimals - manualDiscardAnimals - alreadyPlaced;
       if (existing) {
-        if (existing.count < capacity && availableForPlacement > 0) {
+        if (capacity > 0 && availableForPlacement > 0) {
           return current.map((item) => (placementKey(item) === key ? { ...item, count: item.count + 1 } : item));
         }
         return current.filter((item) => placementKey(item) !== key);
@@ -1292,8 +1292,9 @@ function FarmActionOverlay({
                 const cellsForMode = getCellsForMode(mode, fieldCells, roomCells, stableCells, sowCells);
                 const selected = cellsForMode.some((item) => item.row === row && item.col === col);
                 const valid = mode === "fence" || isCellValidForMode(mode, cell, previewPlayer, cellsForMode);
-                const animalTarget = mode === "animal" ? getAnimalTarget(previewPlayer, row, col, animal) : null;
+                const animalTarget = mode === "animal" ? getAnimalTarget(previewPlayer, row, col, animal, animalPlacements) : null;
                 const animalSelected = animalTarget ? animalPlacements.some((item) => placementKey(item) === placementKey(animalTarget.placement)) : false;
+                const animalSelectedCount = animalTarget ? placementCount(animalPlacements, animalTarget.placement) : 0;
                 return (
                   <button
                     key={`${row}-${col}`}
@@ -1309,7 +1310,7 @@ function FarmActionOverlay({
                     }}
                     type="button"
                   >
-                    <strong>{mode === "animal" && animalTarget ? animalTarget.label : cellLabel(cell, previewPlayer)}</strong>
+                    <strong>{mode === "animal" && animalTarget ? animalPlacementLabel(animalTarget, animalSelectedCount) : cellLabel(cell, previewPlayer)}</strong>
                     <small>{col},{row}</small>
                   </button>
                 );
@@ -1559,7 +1560,7 @@ function hasNeighbor(
   return player.farm.cells.some((candidate) => Math.abs(candidate.row - cell.row) + Math.abs(candidate.col - cell.col) === 1 && predicate(candidate));
 }
 
-function getAnimalTarget(player: PlayerState, row: number, col: number, animal: FarmAnimalType) {
+function getAnimalTarget(player: PlayerState, row: number, col: number, animal: FarmAnimalType, pendingPlacements: AnimalPlacementInput["placements"] = []) {
   const cell = player.farm.cells.find((item) => item.row === row && item.col === col);
   if (!cell) return null;
   if (cell.room && player.farm.animalHousing.house.count === 0) {
@@ -1571,9 +1572,19 @@ function getAnimalTarget(player: PlayerState, row: number, col: number, animal: 
   }
   const pasture = cell.pastureId ? player.farm.pastures.find((item) => item.id === cell.pastureId) : null;
   if (pasture && (!pasture.animalType || pasture.animalType === animal) && pasture.animalCount < pasture.capacity) {
+    const existingCell = player.farm.animalHousing.cells.find((item) => item.row === row && item.col === col);
+    const pendingInPasture = pendingPlacements
+      .filter((item) => item.type === "pasture" && item.pastureId === pasture.id)
+      .reduce((sum, item) => sum + item.count, 0);
+    const pendingInCell = pendingPlacements
+      .filter((item) => item.type === "pasture" && item.pastureId === pasture.id && item.row === row && item.col === col)
+      .reduce((sum, item) => sum + item.count, 0);
+    const cellCapacity = cell.stable ? 4 : 2;
+    const available = Math.min(pasture.capacity - pasture.animalCount - pendingInPasture, cellCapacity - (existingCell?.count ?? 0) - pendingInCell);
+    if (available <= 0) return null;
     return {
       label: `牧场 ${pasture.capacity - pasture.animalCount}`,
-      capacity: pasture.capacity - pasture.animalCount,
+      capacity: available,
       placement: { type: "pasture" as const, pastureId: pasture.id, row, col, count: 1 },
     };
   }
@@ -1584,6 +1595,15 @@ function placementKey(placement: AnimalPlacementInput["placements"][number]): st
   if (placement.type === "house") return "house";
   if (placement.type === "stable") return `stable:${placement.row}:${placement.col}`;
   return `pasture:${placement.pastureId}:${placement.row}:${placement.col}`;
+}
+
+function animalPlacementLabel(target: NonNullable<ReturnType<typeof getAnimalTarget>>, selectedCount: number): string {
+  return selectedCount > 0 ? `${target.label} / 已选${selectedCount}` : target.label;
+}
+
+function placementCount(placements: AnimalPlacementInput["placements"], placement: AnimalPlacementInput["placements"][number]): number {
+  const key = placementKey(placement);
+  return placements.filter((item) => placementKey(item) === key).reduce((sum, item) => sum + item.count, 0);
 }
 
 function sumPlacements(placements: AnimalPlacementInput["placements"]): number {

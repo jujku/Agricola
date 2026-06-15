@@ -1,5 +1,5 @@
-import { majorImprovements } from "../config/majorImprovements";
 import { roomPoints, scoringRules } from "../config/scoringRules";
+import { calculateMajorImprovementBasePoints, calculateMajorImprovementBonusPoints } from "../shared/majorImprovementScoring";
 import type { GameState } from "../state/GameState";
 import type { PlayerState, ScoreBreakdown } from "../state/PlayerState";
 
@@ -33,8 +33,8 @@ export class ScoringManager {
     const roomCount = player.farm.cells.filter((cell) => cell.room).length;
     const fencedStables = player.farm.cells.filter((cell) => cell.stable && cell.pastureId).length;
     const emptySpaces = player.farm.cells.filter((cell) => !cell.room && !cell.field && !cell.pastureId && !cell.stable).length;
-    const majorPoints = player.majorImprovements.reduce((sum, id) => sum + (majorImprovements.find((card) => card.id === id)?.victoryPoints ?? 0), 0);
-    const bonusPoints = this.calculateMajorBonus(player);
+    const majorPoints = calculateMajorImprovementBasePoints(player);
+    const bonusPoints = calculateMajorImprovementBonusPoints(player);
     const breakdown: Omit<ScoreBreakdown, "total"> = {
       fields: this.scoreRange("fields", fieldsCount),
       pastures: this.scoreRange("pastures", pastureCount),
@@ -64,21 +64,6 @@ export class ScoringManager {
     const rule = scoringRules.find((candidate) => candidate.id === id);
     const range = rule?.ranges.find((candidate) => value >= candidate.min && (candidate.max === null || value <= candidate.max));
     return range?.points ?? 0;
-  }
-
-  private calculateMajorBonus(player: PlayerState): number {
-    return player.majorImprovements.reduce((sum, id) => {
-      const card = majorImprovements.find((candidate) => candidate.id === id);
-      const bonus = card?.effects.find((effect) => effect.type === "gameEndResourceBonus");
-
-      if (!bonus || bonus.type !== "gameEndResourceBonus") {
-        return sum;
-      }
-
-      const value = player.resources[bonus.resource];
-      const range = bonus.ranges.find((candidate) => value >= candidate.min && (candidate.max === null || value <= candidate.max));
-      return sum + (range?.points ?? 0);
-    }, 0);
   }
 
   private resolveTie(players: PlayerState[]): PlayerState[] {
