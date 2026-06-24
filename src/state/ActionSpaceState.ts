@@ -2,6 +2,10 @@ export interface ActionSpaceState {
   id: string;
   name: string;
   type: "accumulation" | "instant" | "choice" | "placeholder";
+  ownerId?: string | null;
+  sourceCardId?: string | null;
+  visibility?: "public" | "private";
+  ownerPayment?: Record<string, number>;
   cost: Record<string, number>;
   gain: Record<string, number>;
   prerequisites: string[];

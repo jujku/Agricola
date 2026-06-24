@@ -28,15 +28,20 @@ export class HarvestManager {
       return state;
     }
 
-    const harvestedByPlayerId = Object.fromEntries(state.players.map((player) => [player.id, this.calculateFieldHarvest(player)]));
+    const harvestStartState = this.cardManager.applyHarvestStart(state);
+    const harvestedByPlayerId = Object.fromEntries(harvestStartState.players.map((player) => [player.id, this.calculateFieldHarvest(player)]));
+    const fieldHarvestedState = {
+      ...harvestStartState,
+      players: harvestStartState.players.map((player) => this.farmManager.harvestFields(player)),
+    };
+    const cardHarvestedState = this.cardManager.applyHarvestField(fieldHarvestedState, harvestedByPlayerId);
 
     return {
-      ...state,
+      ...cardHarvestedState,
       stage: "HARVEST_FIELD",
-      players: state.players.map((player) => this.farmManager.harvestFields(player)),
       actionLog: [
-        ...state.actionLog,
-        `第 ${state.round} 轮开始收获田地。${state.players
+        ...cardHarvestedState.actionLog,
+        `第 ${cardHarvestedState.round} 轮开始收获田地。${cardHarvestedState.players
           .map((player) => {
             const harvest = harvestedByPlayerId[player.id];
             return `${player.name} 收获谷物 ${harvest.grain}、蔬菜 ${harvest.vegetable}`;

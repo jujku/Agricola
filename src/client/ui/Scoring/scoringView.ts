@@ -4,6 +4,7 @@ import {
   calculateMajorImprovementBonusPoints,
   calculateMajorImprovementScoreDetails,
 } from "../../../shared/majorImprovementScoring";
+import { calculateCardBonusPoints, countScoringCrops, countScoringFields } from "../../../shared/cardEffectUtils";
 import type { PlayerState, ScoreBreakdown } from "../../../state/PlayerState";
 import type { ResourceIconKey } from "../VisualSystem/ResourceIcons";
 
@@ -29,15 +30,16 @@ export const scoreRows: Array<{ key: ScoreKey; label: string; unit: string; icon
 ];
 
 export function calculateLiveScore(player: PlayerState): ScoreBreakdown {
-  const fieldsCount = player.farm.cells.filter((cell) => cell.field).length;
+  const fieldsCount = countScoringFields(player);
   const pastureCount = player.farm.pastures.length;
-  const grainInFields = cropCount(player, "grain");
-  const vegetableInFields = cropCount(player, "vegetable");
+  const grainInFields = countScoringCrops(player, "grain");
+  const vegetableInFields = countScoringCrops(player, "vegetable");
   const roomCount = player.farm.cells.filter((cell) => cell.room).length;
   const fencedStables = player.farm.cells.filter((cell) => cell.stable && cell.pastureId).length;
   const emptySpaces = player.farm.cells.filter((cell) => !cell.room && !cell.field && !cell.pastureId && !cell.stable).length;
   const majorPoints = calculateMajorImprovementBasePoints(player);
   const bonusPoints = calculateMajorImprovementBonusPoints(player);
+  const cardPoints = calculateCardBonusPoints(player);
   const breakdown: Omit<ScoreBreakdown, "total"> = {
     fields: scoreRange("fields", fieldsCount),
     pastures: scoreRange("pastures", pastureCount),
@@ -50,11 +52,11 @@ export function calculateLiveScore(player: PlayerState): ScoreBreakdown {
     family: player.workers.length * 3,
     fencedStables: Math.min(fencedStables, 4),
     majorImprovements: majorPoints,
-    minorImprovements: 0,
-    occupations: 0,
+    minorImprovements: cardPoints.minor,
+    occupations: cardPoints.occupation,
     emptySpaces: -emptySpaces,
     beggingCards: player.beggingCards * -3,
-    bonusPoints,
+    bonusPoints: bonusPoints + cardPoints.bonus,
   };
   return {
     ...breakdown,
@@ -63,10 +65,10 @@ export function calculateLiveScore(player: PlayerState): ScoreBreakdown {
 }
 
 export function describeScoreValue(player: PlayerState, key: ScoreKey): string {
-  if (key === "fields") return `${player.farm.cells.filter((cell) => cell.field).length}块田地`;
+  if (key === "fields") return `${countScoringFields(player)}块田地`;
   if (key === "pastures") return `${player.farm.pastures.length}个牧场`;
-  if (key === "grain") return `${player.resources.grain + cropCount(player, "grain")}个谷物`;
-  if (key === "vegetables") return `${player.resources.vegetable + cropCount(player, "vegetable")}个蔬菜`;
+  if (key === "grain") return `${player.resources.grain + countScoringCrops(player, "grain")}个谷物`;
+  if (key === "vegetables") return `${player.resources.vegetable + countScoringCrops(player, "vegetable")}个蔬菜`;
   if (key === "sheep") return `${player.animals.sheep}只羊`;
   if (key === "boar") return `${player.animals.boar}只野猪`;
   if (key === "cattle") return `${player.animals.cattle}头牛`;
@@ -85,10 +87,6 @@ export function formatRangeText(id: string): string {
   const rule = scoringRules.find((candidate) => candidate.id === id);
   if (!rule) return "";
   return rule.ranges.map((range) => `${rangeLabel(range.min, range.max)}：${signed(range.points)}分`).join("，");
-}
-
-function cropCount(player: PlayerState, crop: "grain" | "vegetable"): number {
-  return player.farm.cells.reduce((sum, cell) => sum + (cell.field?.crop === crop ? cell.field.count : 0), 0);
 }
 
 function scoreRange(id: string, value: number): number {

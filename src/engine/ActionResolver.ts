@@ -1,4 +1,7 @@
 import type { ActionEffect, AnimalKey, CropKey, ResourceKey } from "../config/baseActions";
+import { getMinorImprovement } from "../config/minorImprovements";
+import { getOccupation } from "../config/occupations";
+import { findCardIdWithActionAccess, hasCardActionAccess } from "../shared/cardEffectUtils";
 import type { ActionInput } from "../shared/types";
 import type { GameState } from "../state/GameState";
 import type { PlayerState } from "../state/PlayerState";
@@ -25,21 +28,46 @@ export class ActionResolver {
     if (!actionSpace) {
       throw new Error("行动格不存在。");
     }
-    if (actionSpace.occupiedBy) {
+    const accumulatedBeforeAction = { ...actionSpace.accumulated };
+    const player = this.getPlayer(state, playerId);
+    if (actionSpace.visibility === "private" && actionSpace.ownerId && actionSpace.ownerId !== playerId) {
+      throw new Error("这是其他玩家的私人行动格。");
+    }
+    const actionGroups = this.actionGroupsForAction(actionSpaceId, input.selectedEffectTypes ?? []);
+    const canUseOccupied = actionSpace.occupiedBy && this.canUseOccupiedAction(player, actionGroups);
+    const usesFreeFenceAction = this.usesFreeFenceAction(player, actionGroups, input);
+    const usesPendingActionAccess = Boolean(input.usePendingActionAccess);
+    if (state.pendingCardChoice) {
+      throw new Error("请先处理卡牌触发的选择。");
+    }
+    if (state.pendingActionAccess && !usesPendingActionAccess && !usesFreeFenceAction) {
+      throw new Error("请先使用或放弃卡牌提供的连续行动。");
+    }
+    if (usesPendingActionAccess) {
+      this.assertPendingActionAccess(state, playerId, actionSpaceId);
+    }
+    if (actionSpace.occupiedBy && !canUseOccupied) {
       throw new Error("行动格已经被占用。");
     }
 
-    const player = this.getPlayer(state, playerId);
     const worker = player.workers.find((candidate) => candidate.id === workerId);
-    if (!worker || worker.location !== "home" || worker.availableRound > state.round) {
+    if (usesFreeFenceAction && !hasCardActionAccess(player, "freeFenceAction")) {
+      throw new Error("没有可用的卡牌行动权限。");
+    }
+    if (!usesFreeFenceAction && (!worker || worker.location !== "home" || worker.availableRound > state.round)) {
       throw new Error("工人不可用。");
     }
 
     let nextState: GameState = {
       ...state,
-      actionSpaces: state.actionSpaces.map((space) => (space.id === actionSpaceId ? { ...space, occupiedBy: playerId } : space)),
+      workPhaseActionCount: (state.workPhaseActionCount ?? 0) + 1,
+      lastActionOrdinalByPlayerId: {
+        ...(state.lastActionOrdinalByPlayerId ?? {}),
+        [playerId]: (state.workPhaseActionCount ?? 0) + 1,
+      },
+      actionSpaces: state.actionSpaces.map((space) => (space.id === actionSpaceId && !canUseOccupied ? { ...space, occupiedBy: playerId } : space)),
       players: state.players.map((candidate) =>
-        candidate.id === playerId
+        candidate.id === playerId && !usesFreeFenceAction
           ? {
               ...candidate,
               workers: candidate.workers.map((candidateWorker) =>
@@ -54,18 +82,43 @@ export class ActionResolver {
             }
           : candidate,
       ),
+      pendingActionAccess: usesPendingActionAccess ? null : state.pendingActionAccess,
       lastError: null,
     };
+
+    nextState = this.payActionSpaceOwner(nextState, playerId, actionSpace);
+
+    if (usesFreeFenceAction) {
+      nextState = this.markActionAccessUsed(nextState, playerId, "freeFenceAction");
+    }
 
     for (const effect of actionSpace.effects) {
       nextState = this.applyEffect(nextState, playerId, actionSpaceId, effect, input);
     }
 
+    nextState = this.applyActionAccessFollowUp(nextState, playerId, actionGroups, actionSpace.effects, input);
+    const actorAfterActionEffects = this.getPlayer(nextState, playerId);
+    nextState = this.cardManager.applyAfterAction(nextState, playerId, actionSpaceId, input, {
+      actionBakeBreadUsed: Boolean(input.bake && this.actionWillApplyEffect(actionSpace.effects, input, "bakeBread")),
+      accumulatedTaken: this.actionWillApplyEffect(actionSpace.effects, input, "takeAccumulated") ? accumulatedBeforeAction : {},
+      actorBefore: player,
+      actorAfter: actorAfterActionEffects,
+    });
+
     const afterPlayer = this.getPlayer(nextState, playerId);
-    return this.roundManager.advanceCurrentPlayer({
+    const withLog = {
       ...nextState,
       actionLog: [...nextState.actionLog, this.describeActionLog(state, nextState, player, afterPlayer, actionSpace.name)],
-    });
+    };
+    const pendingAccess = this.createPendingActionAccess(afterPlayer, actionGroups, state.round);
+    return pendingAccess
+      ? {
+          ...withLog,
+          currentPlayer: playerId,
+          currentPlayerIndex: Math.max(0, withLog.players.findIndex((candidate) => candidate.id === playerId)),
+          pendingActionAccess: pendingAccess,
+        }
+      : this.roundManager.advanceCurrentPlayer(withLog);
   }
 
   private applyEffect(state: GameState, playerId: string, actionSpaceId: string, effect: ActionEffect, input: ActionInput): GameState {
@@ -98,10 +151,10 @@ export class ActionResolver {
       case "buildFences":
         return this.updatePlayer(state, playerId, (player) =>
           input.fenceSegments
-            ? this.farmManager.buildFencesBySegments(player, input.fenceSegments)
+            ? this.farmManager.buildFencesBySegments(player, input.fenceSegments, { free: Boolean(input.useCardActionAccess) })
             : input.fenceEdges
-              ? this.farmManager.buildFencesByEdges(player, input.fenceEdges)
-              : this.farmManager.buildFences(player, input.pastureCells ?? []),
+              ? this.farmManager.buildFencesByEdges(player, input.fenceEdges, { free: Boolean(input.useCardActionAccess) })
+              : this.farmManager.buildFences(player, input.pastureCells ?? [], { free: Boolean(input.useCardActionAccess) }),
         );
       case "sow":
         return this.applySow(state, playerId, input);
@@ -114,9 +167,13 @@ export class ActionResolver {
           throw new Error("当前回合不满足购买大设施前置条件。");
         }
         return input.majorImprovementId ? this.cardManager.buyMajorImprovement(state, playerId, input.majorImprovementId, input) : state;
+      case "playOccupation":
+        return this.cardManager.playOccupation(state, playerId, input.occupationCardId);
+      case "playMinorImprovement":
+        return this.cardManager.playMinorImprovement(state, playerId, input.minorImprovementCardId);
       case "playOccupationPlaceholder":
       case "playMinorImprovementPlaceholder":
-        return { ...state, lastError: "职业卡和小设施将在未来开放。" };
+        return { ...state, lastError: "请通过行动格选择要打出的职业卡或小设施。" };
       case "takeStartingPlayer":
         return { ...state, startingPlayer: playerId };
       case "renovate":
@@ -157,7 +214,7 @@ export class ActionResolver {
           throw new Error(this.requiredEffectMessage(requiredType));
         }
       });
-      if ((effect.type === "buyMajorImprovement" || effect.type === "playMinorImprovementPlaceholder") && selectedTypes.has("renovate") && !effect.requiresSelectedEffectTypes?.includes("renovate")) {
+      if ((effect.type === "buyMajorImprovement" || effect.type === "playMinorImprovement" || effect.type === "playMinorImprovementPlaceholder") && selectedTypes.has("renovate") && !effect.requiresSelectedEffectTypes?.includes("renovate")) {
         throw new Error("必须通过对应的翻修后续行动执行。");
       }
     });
@@ -193,6 +250,25 @@ export class ActionResolver {
     return effect.type === "playOccupationPlaceholder" || effect.type === "playMinorImprovementPlaceholder";
   }
 
+  private actionWillApplyEffect(effects: ActionEffect[], input: ActionInput, type: ActionEffect["type"]): boolean {
+    return effects.some((effect) => this.effectWillApply(effect, input, type));
+  }
+
+  private effectWillApply(effect: ActionEffect, input: ActionInput, type: ActionEffect["type"]): boolean {
+    if (effect.type === "chooseAny" || effect.type === "chooseOne") {
+      const availableEffects = effect.effects.filter((child) => !this.isUnavailablePlaceholder(child));
+      const effectsToApply =
+        this.hasSelection(input)
+          ? effect.effects.filter((child) => this.isSelectedEffect(child, input))
+          : effect.type === "chooseOne"
+            ? availableEffects.slice(0, 1)
+            : availableEffects;
+      return effectsToApply.some((child) => this.effectWillApply(child, input, type));
+    }
+    if (this.hasSelection(input) && !this.isSelectedEffect(effect, input)) return false;
+    return effect.type === type;
+  }
+
   private requiredEffectMessage(requiredType: string): string {
     if (requiredType === "renovate") return "必须先翻修房屋后才能执行后续行动。";
     if (requiredType === "familyGrowth") return "必须先生孩子后才能打出小设施。";
@@ -216,7 +292,7 @@ export class ActionResolver {
         if (!input.animalPlacement || input.animalPlacement.animal !== key) {
           throw new Error("必须选择动物安置、烹饪或丢弃方式。");
         }
-        nextState = this.updatePlayer(nextState, playerId, (player) => this.animalManager.placeAnimals(player, input.animalPlacement!, amount));
+        nextState = this.updatePlayer(nextState, playerId, (player) => this.animalManager.resolveAnimalGain(player, key, amount, input.animalPlacement));
         nextAccumulated[key] = 0;
       }
     });
@@ -272,7 +348,7 @@ export class ActionResolver {
     if (!input.animalPlacement) {
       throw new Error("必须选择动物安置、烹饪或丢弃方式。");
     }
-    nextPlayer = this.animalManager.placeAnimals(nextPlayer, input.animalPlacement, effect.amount);
+    nextPlayer = this.animalManager.resolveAnimalGain(nextPlayer, effect.animal, effect.amount, input.animalPlacement);
     if ((effect.foodDelta ?? 0) > 0) {
       nextPlayer = this.gainResource(nextPlayer, "food", effect.foodDelta ?? 0);
     }
@@ -301,19 +377,183 @@ export class ActionResolver {
     if (requiresRoom && this.farmManager.countEmptyRooms(player) < 1) {
       throw new Error("没有空房间。");
     }
+    const paidImmediateNewborn = hasCardActionAccess(player, "immediateNewborn") && player.resources.food > 0;
+    const nextPlayer = paidImmediateNewborn ? this.farmManager.pay(player, { food: 1 }) : player;
     const workerNumber = player.workers.length + 1;
     return {
-      ...player,
+      ...nextPlayer,
       workers: [
-        ...player.workers,
+        ...nextPlayer.workers,
         {
           id: `${player.id}-worker-${workerNumber}`,
           location: "home",
           actionSpaceId: null,
-          availableRound: round + 1,
+          availableRound: paidImmediateNewborn ? round : round + 1,
         },
       ],
     };
+  }
+
+  private canUseOccupiedAction(player: PlayerState, actionGroups: string[]): boolean {
+    if (actionGroups.includes("familyGrowth") && hasCardActionAccess(player, "occupiedFamilyGrowth")) {
+      return true;
+    }
+    return false;
+  }
+
+  private usesFreeFenceAction(player: PlayerState, actionGroups: string[], input: ActionInput): boolean {
+    return actionGroups.includes("fences") && Boolean(input.useCardActionAccess) && hasCardActionAccess(player, "freeFenceAction");
+  }
+
+  private createPendingActionAccess(player: PlayerState, actionGroups: string[], round: number): GameState["pendingActionAccess"] {
+    if (!player.workers.some((worker) => worker.location === "home" && worker.availableRound <= round)) {
+      return null;
+    }
+    const sourceCardId = actionGroups.includes("familyGrowth") ? findCardIdWithActionAccess(player, "immediateNewborn") : null;
+    if (sourceCardId) {
+      return { playerId: player.id, access: "keepTurnAfterAnyAction", sourceCardId, createdRound: round, used: false };
+    }
+    const keepAnySource = findCardIdWithActionAccess(player, "keepTurnAfterAnyAction");
+    if (keepAnySource) {
+      return { playerId: player.id, access: "keepTurnAfterAnyAction", sourceCardId: keepAnySource, createdRound: round, used: false };
+    }
+    const keepAnimalSource = actionGroups.includes("animalMarket") ? findCardIdWithActionAccess(player, "keepTurnAfterAnimalMarket") : null;
+    if (keepAnimalSource) {
+      return { playerId: player.id, access: "keepTurnAfterAnimalMarket", sourceCardId: keepAnimalSource, createdRound: round, used: false };
+    }
+    return null;
+  }
+
+  private assertPendingActionAccess(state: GameState, playerId: string, actionSpaceId: string): void {
+    const pending = state.pendingActionAccess;
+    if (!pending || pending.used || pending.playerId !== playerId || pending.createdRound !== state.round) {
+      throw new Error("没有可用的连续行动权限。");
+    }
+    if (pending.access === "keepTurnAfterAnimalMarket" && !this.isAdjacentToPreviousAction(state, playerId, actionSpaceId)) {
+      throw new Error("这次连续行动必须放到上一行动格左侧相邻行动格。");
+    }
+  }
+
+  private isAdjacentToPreviousAction(state: GameState, playerId: string, actionSpaceId: string): boolean {
+    const previousActionId = state.players.find((player) => player.id === playerId)?.workers.find((worker) => worker.location === "action_space")?.actionSpaceId;
+    if (!previousActionId) return false;
+    const previousIndex = state.actionSpaces.findIndex((space) => space.id === previousActionId);
+    const nextIndex = state.actionSpaces.findIndex((space) => space.id === actionSpaceId);
+    return previousIndex > 0 && nextIndex === previousIndex - 1;
+  }
+
+  private payActionSpaceOwner(state: GameState, actorId: string, actionSpace: GameState["actionSpaces"][number]): GameState {
+    if (!actionSpace.ownerId || actionSpace.ownerId === actorId || !actionSpace.ownerPayment || Object.keys(actionSpace.ownerPayment).length === 0) {
+      return state;
+    }
+    const actor = this.getPlayer(state, actorId);
+    const owner = this.getPlayer(state, actionSpace.ownerId);
+    const payment = Object.entries(actionSpace.ownerPayment).reduce<Partial<Record<ResourceKey, number>>>((cost, [resource, amount]) => {
+      if (this.isResourceKey(resource) && amount > 0) cost[resource] = amount;
+      return cost;
+    }, {});
+    this.farmManager.assertCanPay(actor, payment);
+    const paidActor = this.farmManager.pay(actor, payment);
+    const paidResources = payment;
+    return {
+      ...state,
+      players: state.players.map((player) => {
+        if (player.id === actorId) return paidActor;
+        if (player.id === owner.id) {
+          return {
+            ...player,
+            resources: Object.entries(paidResources).reduce(
+              (resources, [resource, amount]) => this.isResourceKey(resource) ? { ...resources, [resource]: resources[resource] + (amount ?? 0) } : resources,
+              player.resources,
+            ),
+          };
+        }
+        return player;
+      }),
+    };
+  }
+
+  private applyActionAccessFollowUp(state: GameState, playerId: string, actionGroups: string[], effects: ActionEffect[], input: ActionInput): GameState {
+    if (!actionGroups.includes("animalMarket")) return state;
+    const player = this.getPlayer(state, playerId);
+    if (!hasCardActionAccess(player, "doubleAnimalMarket")) return state;
+    const animalEffect = this.selectedAnimalEffect(effects, input);
+    if (!animalEffect || player.resources.food <= 0) return state;
+    try {
+      return this.updatePlayer(state, playerId, (currentPlayer) => {
+        let nextPlayer = this.farmManager.pay(currentPlayer, { food: 1 });
+        if ((animalEffect.foodDelta ?? 0) < 0) {
+          nextPlayer = this.farmManager.pay(nextPlayer, { food: Math.abs(animalEffect.foodDelta ?? 0) });
+        }
+        const before = nextPlayer.animals[animalEffect.animal];
+        nextPlayer = this.animalManager.resolveAnimalGain(nextPlayer, animalEffect.animal, animalEffect.amount);
+        if (nextPlayer.animals[animalEffect.animal] === before) {
+          return currentPlayer;
+        }
+        if ((animalEffect.foodDelta ?? 0) > 0) {
+          nextPlayer = this.gainResource(nextPlayer, "food", animalEffect.foodDelta ?? 0);
+        }
+        return nextPlayer;
+      });
+    } catch {
+      return state;
+    }
+  }
+
+  private selectedAnimalEffect(effects: ActionEffect[], input: ActionInput): Extract<ActionEffect, { type: "gainAnimal" }> | null {
+    const choices = effects.flatMap((effect) => this.flattenActionEffects(effect));
+    const selectedIds = new Set(input.selectedEffectIds ?? []);
+    const selectedTypes = new Set(input.selectedEffectTypes ?? []);
+    const animalChoices = choices.filter((effect): effect is Extract<ActionEffect, { type: "gainAnimal" }> => effect.type === "gainAnimal");
+    if (input.animalChoice) {
+      return animalChoices.find((effect) => effect.animal === input.animalChoice) ?? null;
+    }
+    if (selectedIds.size > 0) {
+      return animalChoices.find((effect) => effect.id && selectedIds.has(effect.id)) ?? null;
+    }
+    if (selectedTypes.has("gainAnimal")) {
+      return animalChoices[0] ?? null;
+    }
+    return animalChoices.length === 1 ? animalChoices[0] : null;
+  }
+
+  private flattenActionEffects(effect: ActionEffect): ActionEffect[] {
+    return "effects" in effect && effect.effects ? effect.effects.flatMap((child) => this.flattenActionEffects(child)) : [effect];
+  }
+
+  private markActionAccessUsed(state: GameState, playerId: string, access: "freeFenceAction"): GameState {
+    const cardId = findCardIdWithActionAccess(this.getPlayer(state, playerId), access);
+    if (!cardId) return state;
+    return this.updatePlayer(state, playerId, (player) => ({
+      ...player,
+      cardStates: {
+        ...player.cardStates,
+        [cardId]: {
+          ...(player.cardStates[cardId] ?? {
+            cardId,
+            playedRound: state.round,
+            markers: {},
+            storedAnimals: {},
+            storedGoods: {},
+            bonusPoints: 0,
+          }),
+          markers: {
+            ...(player.cardStates[cardId]?.markers ?? {}),
+            [`used:${access}:${state.round}`]: 1,
+          },
+        },
+      },
+    }));
+  }
+
+  private actionGroupsForAction(actionSpaceId: string, selectedEffectTypes: string[]): string[] {
+    const groups = new Set<string>();
+    const add = (...items: string[]) => items.forEach((item) => groups.add(item));
+    if (["sheep-market", "boar-market", "cattle-market", "five-animal-market", "three-four-flex", "two-player-flex", "six-corral"].includes(actionSpaceId)) add("animalMarket");
+    if (["family-growth-room", "family-growth-any", "five-lessons-family", "two-player-flex", "three-four-flex"].includes(actionSpaceId) || selectedEffectTypes.includes("familyGrowth")) add("familyGrowth");
+    if (["fencing", "farm-redevelopment"].includes(actionSpaceId) || selectedEffectTypes.includes("buildFences")) add("fences", "building");
+    if (["farm-expansion", "house-redevelopment", "five-build-room-traveling"].includes(actionSpaceId) || selectedEffectTypes.some((type) => ["buildRooms", "buildStables"].includes(type))) add("building");
+    return [...groups];
   }
 
   private gainMissingAnimal(player: PlayerState, input: ActionInput): PlayerState {
@@ -328,7 +568,7 @@ export class ActionResolver {
     if (!input.animalPlacement) {
       throw new Error("必须选择动物安置、烹饪或丢弃方式。");
     }
-    return this.animalManager.placeAnimals(player, input.animalPlacement, 1);
+    return this.animalManager.resolveAnimalGain(player, chosenAnimal, 1, input.animalPlacement);
   }
 
   private gainResource(player: PlayerState, resource: ResourceKey, amount: number): PlayerState {
@@ -348,7 +588,28 @@ export class ActionResolver {
     const farmChanges = this.describeFarmChanges(beforePlayer, afterPlayer);
     const markers = beforeState.startingPlayer !== afterState.startingPlayer && afterState.startingPlayer === afterPlayer.id ? ["成为起始玩家"] : [];
     const parts = [...farmChanges, ...animalChanges, ...gains, ...costs, ...markers];
-    return parts.length > 0 ? `${beforePlayer.name} 使用 ${actionName}：${parts.join("，")}。` : `${beforePlayer.name} 使用 ${actionName}。`;
+    const cardChanges = this.describeCardChanges(beforePlayer, afterPlayer);
+    const allParts = [...parts, ...cardChanges];
+    return allParts.length > 0 ? `${beforePlayer.name} 使用 ${actionName}：${allParts.join("，")}。` : `${beforePlayer.name} 使用 ${actionName}。`;
+  }
+
+  private describeCardChanges(beforePlayer: PlayerState, afterPlayer: PlayerState): string[] {
+    const occupations = afterPlayer.occupations.filter((cardId) => !beforePlayer.occupations.includes(cardId));
+    const minorImprovements = afterPlayer.minorImprovements.filter((cardId) => !beforePlayer.minorImprovements.includes(cardId));
+    const passedMinorImprovements = beforePlayer.minorImprovementHand.filter((cardId) => !afterPlayer.minorImprovementHand.includes(cardId) && !afterPlayer.minorImprovements.includes(cardId));
+    return [
+      ...occupations.map((cardId) => `打出职业 ${this.occupationName(cardId)}`),
+      ...minorImprovements.map((cardId) => `打出小设施 ${this.minorImprovementName(cardId)}`),
+      ...passedMinorImprovements.map((cardId) => `打出并传递小设施 ${this.minorImprovementName(cardId)}`),
+    ];
+  }
+
+  private occupationName(cardId: string): string {
+    return getOccupation(cardId)?.name ?? cardId;
+  }
+
+  private minorImprovementName(cardId: string): string {
+    return getMinorImprovement(cardId)?.name ?? cardId;
   }
 
   private describeResourceChanges(beforePlayer: PlayerState, afterPlayer: PlayerState, gain: boolean): string[] {

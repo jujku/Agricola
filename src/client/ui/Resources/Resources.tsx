@@ -1,5 +1,6 @@
 import type { PlayerState } from "../../../state/PlayerState";
 import type { GameState } from "../../../state/GameState";
+import { PlayedCardShelf } from "../Cards/PlayableCard";
 import { MajorFacilities } from "../MajorFacilities/MajorFacilities";
 import { RESOURCE_ICONS, type ResourceIconKey } from "../VisualSystem/ResourceIcons";
 
@@ -77,6 +78,7 @@ export function Resources({ game, isOwnPlayer, player, roomId }: ResourcesProps)
               </section>
             ))}
             <MajorFacilities game={game} isOwnPlayer={isOwnPlayer} player={player} roomId={roomId} />
+            <PlayedCardShelf player={player} />
           </article>
         </div>
       )}

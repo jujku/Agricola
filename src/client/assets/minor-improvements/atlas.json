@@ -1,0 +1,1576 @@
+{
+  "meta": {
+    "sourceSheets": [
+      "小设施卡1-25.png",
+      "小设施卡26-52.png"
+    ],
+    "trimMode": "Crop / Trim",
+    "detection": "alpha connected components grouped by visual row order",
+    "padding": 8,
+    "droppedSecondSheetVisualSlots": [
+      23
+    ]
+  },
+  "frames": {
+    "01-篷车.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 11,
+        "y": 14,
+        "w": 207,
+        "h": 160
+      },
+      "tightFrame": {
+        "x": 19,
+        "y": 22,
+        "w": 191,
+        "h": 144
+      },
+      "offset": {
+        "x": 11,
+        "y": 14
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "篷车",
+      "sourceComponent": 10
+    },
+    "02-瓶罐.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 226,
+        "y": 12,
+        "w": 156,
+        "h": 163
+      },
+      "tightFrame": {
+        "x": 234,
+        "y": 20,
+        "w": 140,
+        "h": 147
+      },
+      "offset": {
+        "x": 226,
+        "y": 12
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "瓶罐",
+      "sourceComponent": 8
+    },
+    "03-迁移耕作.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 366,
+        "y": 8,
+        "w": 202,
+        "h": 166
+      },
+      "tightFrame": {
+        "x": 374,
+        "y": 16,
+        "w": 186,
+        "h": 150
+      },
+      "offset": {
+        "x": 366,
+        "y": 8
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "迁移耕作",
+      "sourceComponent": 1
+    },
+    "04-黏土堤.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 556,
+        "y": 25,
+        "w": 225,
+        "h": 141
+      },
+      "tightFrame": {
+        "x": 564,
+        "y": 33,
+        "w": 209,
+        "h": 125
+      },
+      "offset": {
+        "x": 556,
+        "y": 25
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "黏土堤",
+      "sourceComponent": 31
+    },
+    "05-幼畜市场.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 776,
+        "y": 14,
+        "w": 239,
+        "h": 169
+      },
+      "tightFrame": {
+        "x": 784,
+        "y": 22,
+        "w": 223,
+        "h": 153
+      },
+      "offset": {
+        "x": 776,
+        "y": 14
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "幼畜市场",
+      "sourceComponent": 11
+    },
+    "06-饮水槽.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 13,
+        "y": 205,
+        "w": 206,
+        "h": 127
+      },
+      "tightFrame": {
+        "x": 21,
+        "y": 213,
+        "w": 190,
+        "h": 111
+      },
+      "offset": {
+        "x": 13,
+        "y": 205
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "饮水槽",
+      "sourceComponent": 256
+    },
+    "07-夯土.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 211,
+        "y": 182,
+        "w": 197,
+        "h": 150
+      },
+      "tightFrame": {
+        "x": 219,
+        "y": 190,
+        "w": 181,
+        "h": 134
+      },
+      "offset": {
+        "x": 211,
+        "y": 182
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "夯土",
+      "sourceComponent": 219
+    },
+    "08-手犁.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 387,
+        "y": 181,
+        "w": 203,
+        "h": 148
+      },
+      "tightFrame": {
+        "x": 395,
+        "y": 189,
+        "w": 187,
+        "h": 132
+      },
+      "offset": {
+        "x": 387,
+        "y": 181
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "手犁",
+      "sourceComponent": 218
+    },
+    "09-打谷板.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 560,
+        "y": 195,
+        "w": 234,
+        "h": 139
+      },
+      "tightFrame": {
+        "x": 568,
+        "y": 203,
+        "w": 218,
+        "h": 123
+      },
+      "offset": {
+        "x": 560,
+        "y": 195
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "打谷板",
+      "sourceComponent": 235
+    },
+    "10-睡角.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 782,
+        "y": 179,
+        "w": 229,
+        "h": 168
+      },
+      "tightFrame": {
+        "x": 790,
+        "y": 187,
+        "w": 213,
+        "h": 152
+      },
+      "offset": {
+        "x": 782,
+        "y": 179
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "睡角",
+      "sourceComponent": 216
+    },
+    "11-饲槽.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 9,
+        "y": 346,
+        "w": 216,
+        "h": 162
+      },
+      "tightFrame": {
+        "x": 17,
+        "y": 354,
+        "w": 200,
+        "h": 146
+      },
+      "offset": {
+        "x": 9,
+        "y": 346
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "饲槽",
+      "sourceComponent": 437
+    },
+    "12-广阔农场.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 208,
+        "y": 344,
+        "w": 229,
+        "h": 164
+      },
+      "tightFrame": {
+        "x": 216,
+        "y": 352,
+        "w": 213,
+        "h": 148
+      },
+      "offset": {
+        "x": 208,
+        "y": 344
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "广阔农场",
+      "sourceComponent": 416
+    },
+    "13-羊毛毯.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 424,
+        "y": 344,
+        "w": 193,
+        "h": 156
+      },
+      "tightFrame": {
+        "x": 432,
+        "y": 352,
+        "w": 177,
+        "h": 140
+      },
+      "offset": {
+        "x": 424,
+        "y": 344
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "羊毛毯",
+      "sourceComponent": 420
+    },
+    "14-池塘小屋.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 604,
+        "y": 344,
+        "w": 220,
+        "h": 172
+      },
+      "tightFrame": {
+        "x": 612,
+        "y": 352,
+        "w": 204,
+        "h": 156
+      },
+      "offset": {
+        "x": 604,
+        "y": 344
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "池塘小屋",
+      "sourceComponent": 422
+    },
+    "15-奶壶.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 816,
+        "y": 344,
+        "w": 178,
+        "h": 161
+      },
+      "tightFrame": {
+        "x": 824,
+        "y": 352,
+        "w": 162,
+        "h": 145
+      },
+      "offset": {
+        "x": 816,
+        "y": 344
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "奶壶",
+      "sourceComponent": 427
+    },
+    "16-陶烟斗.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 16,
+        "y": 543,
+        "w": 201,
+        "h": 150
+      },
+      "tightFrame": {
+        "x": 24,
+        "y": 551,
+        "w": 185,
+        "h": 134
+      },
+      "offset": {
+        "x": 16,
+        "y": 543
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "陶烟斗",
+      "sourceComponent": 699
+    },
+    "17-杂物间.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 206,
+        "y": 514,
+        "w": 217,
+        "h": 166
+      },
+      "tightFrame": {
+        "x": 214,
+        "y": 522,
+        "w": 201,
+        "h": 150
+      },
+      "offset": {
+        "x": 206,
+        "y": 514
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "杂物间",
+      "sourceComponent": 658
+    },
+    "18-篮子.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 411,
+        "y": 515,
+        "w": 213,
+        "h": 173
+      },
+      "tightFrame": {
+        "x": 419,
+        "y": 523,
+        "w": 197,
+        "h": 157
+      },
+      "offset": {
+        "x": 411,
+        "y": 515
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "篮子",
+      "sourceComponent": 663
+    },
+    "19-荷兰风车.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 617,
+        "y": 504,
+        "w": 181,
+        "h": 188
+      },
+      "tightFrame": {
+        "x": 625,
+        "y": 512,
+        "w": 165,
+        "h": 172
+      },
+      "offset": {
+        "x": 617,
+        "y": 504
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "荷兰风车",
+      "sourceComponent": 650
+    },
+    "20-谷物勺.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 794,
+        "y": 531,
+        "w": 206,
+        "h": 168
+      },
+      "tightFrame": {
+        "x": 802,
+        "y": 539,
+        "w": 190,
+        "h": 152
+      },
+      "offset": {
+        "x": 794,
+        "y": 531
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "谷物勺",
+      "sourceComponent": 679
+    },
+    "21-大型温室.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 8,
+        "y": 755,
+        "w": 257,
+        "h": 166
+      },
+      "tightFrame": {
+        "x": 16,
+        "y": 763,
+        "w": 241,
+        "h": 150
+      },
+      "offset": {
+        "x": 8,
+        "y": 755
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "大型温室",
+      "sourceComponent": 873
+    },
+    "22-清地铲.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 257,
+        "y": 720,
+        "w": 113,
+        "h": 192
+      },
+      "tightFrame": {
+        "x": 265,
+        "y": 728,
+        "w": 97,
+        "h": 176
+      },
+      "offset": {
+        "x": 257,
+        "y": 720
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "清地铲",
+      "sourceComponent": 857
+    },
+    "23-木材厂.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 363,
+        "y": 738,
+        "w": 237,
+        "h": 170
+      },
+      "tightFrame": {
+        "x": 371,
+        "y": 746,
+        "w": 221,
+        "h": 154
+      },
+      "offset": {
+        "x": 363,
+        "y": 738
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "木材厂",
+      "sourceComponent": 862
+    },
+    "24-独木舟.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 588,
+        "y": 767,
+        "w": 236,
+        "h": 146
+      },
+      "tightFrame": {
+        "x": 596,
+        "y": 775,
+        "w": 220,
+        "h": 130
+      },
+      "offset": {
+        "x": 588,
+        "y": 767
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "独木舟",
+      "sourceComponent": 880
+    },
+    "25-石钳.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 811,
+        "y": 767,
+        "w": 205,
+        "h": 139
+      },
+      "tightFrame": {
+        "x": 819,
+        "y": 775,
+        "w": 189,
+        "h": 123
+      },
+      "offset": {
+        "x": 811,
+        "y": 767
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "石钳",
+      "sourceComponent": 881
+    },
+    "26-牧羊杖.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 16,
+        "y": 17,
+        "w": 115,
+        "h": 175
+      },
+      "tightFrame": {
+        "x": 24,
+        "y": 25,
+        "w": 99,
+        "h": 159
+      },
+      "offset": {
+        "x": 16,
+        "y": 17
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "牧羊杖",
+      "sourceComponent": 1
+    },
+    "27-迷你牧场.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 136,
+        "y": 32,
+        "w": 231,
+        "h": 157
+      },
+      "tightFrame": {
+        "x": 144,
+        "y": 40,
+        "w": 215,
+        "h": 141
+      },
+      "offset": {
+        "x": 136,
+        "y": 32
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "迷你牧场",
+      "sourceComponent": 9
+    },
+    "28-市场摊位.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 364,
+        "y": 21,
+        "w": 179,
+        "h": 167
+      },
+      "tightFrame": {
+        "x": 372,
+        "y": 29,
+        "w": 163,
+        "h": 151
+      },
+      "offset": {
+        "x": 364,
+        "y": 21
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "市场摊位",
+      "sourceComponent": 2
+    },
+    "29-木匠客厅.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 540,
+        "y": 24,
+        "w": 173,
+        "h": 167
+      },
+      "tightFrame": {
+        "x": 548,
+        "y": 32,
+        "w": 157,
+        "h": 151
+      },
+      "offset": {
+        "x": 540,
+        "y": 24
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "木匠客厅",
+      "sourceComponent": 3
+    },
+    "30-采矿锤.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 717,
+        "y": 36,
+        "w": 109,
+        "h": 142
+      },
+      "tightFrame": {
+        "x": 725,
+        "y": 44,
+        "w": 93,
+        "h": 126
+      },
+      "offset": {
+        "x": 717,
+        "y": 36
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "采矿锤",
+      "sourceComponent": 19
+    },
+    "31-翻土犁.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 834,
+        "y": 28,
+        "w": 177,
+        "h": 154
+      },
+      "tightFrame": {
+        "x": 842,
+        "y": 36,
+        "w": 161,
+        "h": 138
+      },
+      "offset": {
+        "x": 834,
+        "y": 28
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "翻土犁",
+      "sourceComponent": 6
+    },
+    "32-套索.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 9,
+        "y": 197,
+        "w": 165,
+        "h": 157
+      },
+      "tightFrame": {
+        "x": 17,
+        "y": 205,
+        "w": 149,
+        "h": 141
+      },
+      "offset": {
+        "x": 9,
+        "y": 197
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "套索",
+      "sourceComponent": 170
+    },
+    "33-面包铲.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 158,
+        "y": 204,
+        "w": 191,
+        "h": 148
+      },
+      "tightFrame": {
+        "x": 166,
+        "y": 212,
+        "w": 175,
+        "h": 132
+      },
+      "offset": {
+        "x": 158,
+        "y": 204
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "面包铲",
+      "sourceComponent": 183
+    },
+    "34-壁炉台.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 343,
+        "y": 193,
+        "w": 191,
+        "h": 166
+      },
+      "tightFrame": {
+        "x": 351,
+        "y": 201,
+        "w": 175,
+        "h": 150
+      },
+      "offset": {
+        "x": 343,
+        "y": 193
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "壁炉台",
+      "sourceComponent": 163
+    },
+    "35-织布机.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 526,
+        "y": 193,
+        "w": 178,
+        "h": 167
+      },
+      "tightFrame": {
+        "x": 534,
+        "y": 201,
+        "w": 162,
+        "h": 151
+      },
+      "offset": {
+        "x": 526,
+        "y": 193
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "织布机",
+      "sourceComponent": 164
+    },
+    "36-草莓地.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 689,
+        "y": 210,
+        "w": 185,
+        "h": 140
+      },
+      "tightFrame": {
+        "x": 697,
+        "y": 218,
+        "w": 169,
+        "h": 124
+      },
+      "offset": {
+        "x": 689,
+        "y": 210
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "草莓地",
+      "sourceComponent": 193
+    },
+    "37-鲱鱼锅.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 865,
+        "y": 200,
+        "w": 151,
+        "h": 153
+      },
+      "tightFrame": {
+        "x": 873,
+        "y": 208,
+        "w": 135,
+        "h": 137
+      },
+      "offset": {
+        "x": 865,
+        "y": 200
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "鲱鱼锅",
+      "sourceComponent": 171
+    },
+    "38-搅乳器.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 24,
+        "y": 360,
+        "w": 146,
+        "h": 176
+      },
+      "tightFrame": {
+        "x": 32,
+        "y": 368,
+        "w": 130,
+        "h": 160
+      },
+      "offset": {
+        "x": 24,
+        "y": 360
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "搅乳器",
+      "sourceComponent": 335
+    },
+    "39-小溪.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 156,
+        "y": 366,
+        "w": 204,
+        "h": 173
+      },
+      "tightFrame": {
+        "x": 164,
+        "y": 374,
+        "w": 188,
+        "h": 157
+      },
+      "offset": {
+        "x": 156,
+        "y": 366
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "小溪",
+      "sourceComponent": 338
+    },
+    "40-洗碗间.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 347,
+        "y": 368,
+        "w": 189,
+        "h": 170
+      },
+      "tightFrame": {
+        "x": 355,
+        "y": 376,
+        "w": 173,
+        "h": 154
+      },
+      "offset": {
+        "x": 347,
+        "y": 368
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "洗碗间",
+      "sourceComponent": 342
+    },
+    "41-三圃轮作.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 516,
+        "y": 371,
+        "w": 232,
+        "h": 166
+      },
+      "tightFrame": {
+        "x": 524,
+        "y": 379,
+        "w": 216,
+        "h": 150
+      },
+      "offset": {
+        "x": 516,
+        "y": 371
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "三圃轮作",
+      "sourceComponent": 351
+    },
+    "42-干草叉.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 750,
+        "y": 367,
+        "w": 92,
+        "h": 169
+      },
+      "tightFrame": {
+        "x": 758,
+        "y": 375,
+        "w": 76,
+        "h": 153
+      },
+      "offset": {
+        "x": 750,
+        "y": 367
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "干草叉",
+      "sourceComponent": 340
+    },
+    "43-麻袋车.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 9,
+        "y": 548,
+        "w": 233,
+        "h": 165
+      },
+      "tightFrame": {
+        "x": 17,
+        "y": 556,
+        "w": 217,
+        "h": 149
+      },
+      "offset": {
+        "x": 9,
+        "y": 548
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "麻袋车",
+      "sourceComponent": 562
+    },
+    "44-豆田.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 832,
+        "y": 366,
+        "w": 187,
+        "h": 172
+      },
+      "tightFrame": {
+        "x": 840,
+        "y": 374,
+        "w": 171,
+        "h": 156
+      },
+      "offset": {
+        "x": 832,
+        "y": 366
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "豆田",
+      "sourceComponent": 339
+    },
+    "45-密林.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 475,
+        "y": 540,
+        "w": 241,
+        "h": 181
+      },
+      "tightFrame": {
+        "x": 483,
+        "y": 548,
+        "w": 225,
+        "h": 165
+      },
+      "offset": {
+        "x": 475,
+        "y": 540
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "密林",
+      "sourceComponent": 554
+    },
+    "46-壤土坑.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 698,
+        "y": 550,
+        "w": 316,
+        "h": 168
+      },
+      "tightFrame": {
+        "x": 706,
+        "y": 558,
+        "w": 300,
+        "h": 152
+      },
+      "offset": {
+        "x": 698,
+        "y": 550
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "壤土坑",
+      "sourceComponent": 564
+    },
+    "47-硬瓷.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 232,
+        "y": 544,
+        "w": 256,
+        "h": 171
+      },
+      "tightFrame": {
+        "x": 240,
+        "y": 552,
+        "w": 240,
+        "h": 155
+      },
+      "offset": {
+        "x": 232,
+        "y": 544
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "硬瓷",
+      "sourceComponent": 557
+    },
+    "48-橡果篮.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 507,
+        "y": 733,
+        "w": 176,
+        "h": 179
+      },
+      "tightFrame": {
+        "x": 515,
+        "y": 741,
+        "w": 160,
+        "h": 163
+      },
+      "offset": {
+        "x": 507,
+        "y": 733
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "橡果篮",
+      "sourceComponent": 748
+    },
+    "49-风笛.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 182,
+        "y": 723,
+        "w": 180,
+        "h": 190
+      },
+      "tightFrame": {
+        "x": 190,
+        "y": 731,
+        "w": 164,
+        "h": 174
+      },
+      "offset": {
+        "x": 182,
+        "y": 723
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "风笛",
+      "sourceComponent": 739
+    },
+    "50-胸针.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 351,
+        "y": 736,
+        "w": 168,
+        "h": 170
+      },
+      "tightFrame": {
+        "x": 359,
+        "y": 744,
+        "w": 152,
+        "h": 154
+      },
+      "offset": {
+        "x": 351,
+        "y": 736
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "胸针",
+      "sourceComponent": 752
+    },
+    "51-威士忌桶.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 670,
+        "y": 739,
+        "w": 188,
+        "h": 176
+      },
+      "tightFrame": {
+        "x": 678,
+        "y": 747,
+        "w": 172,
+        "h": 160
+      },
+      "offset": {
+        "x": 670,
+        "y": 739
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "威士忌桶",
+      "sourceComponent": 761
+    },
+    "52-高地牛.png": {
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 826,
+        "y": 727,
+        "w": 190,
+        "h": 186
+      },
+      "tightFrame": {
+        "x": 834,
+        "y": 735,
+        "w": 174,
+        "h": 170
+      },
+      "offset": {
+        "x": 826,
+        "y": 727
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "cardName": "高地牛",
+      "sourceComponent": 741
+    }
+  }
+}

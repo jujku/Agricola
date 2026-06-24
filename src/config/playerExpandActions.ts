@@ -74,14 +74,14 @@ export const playerExpandActions: ActionDefinition[] = [
     cost: {},
     gain: {},
     prerequisites: [],
-    rules: ["二选一：打出职业卡，或拿走小树林累积的全部木材。", "职业卡未来开放。", "小树林每回合累积1木材。"],
-    restrictions: ["职业卡内容未来开放"],
+    rules: ["二选一：打出职业卡，或拿走小树林累积的全部木材。", "小树林每回合累积1木材。"],
+    restrictions: [],
     occupiedBy: null,
     effects: [
       {
         type: "chooseOne",
         effects: [
-          { type: "playOccupationPlaceholder", label: "打出职业卡", description: "职业卡将在后续版本开放。" },
+          { type: "playOccupation", label: "打出职业卡", description: "从手牌选择1张职业卡打出。" },
           { type: "takeAccumulated", label: "小树林", description: "拿走此格累积的全部木材。" },
         ],
       },
@@ -124,14 +124,14 @@ export const playerExpandActions: ActionDefinition[] = [
     cost: {},
     gain: {},
     prerequisites: [],
-    rules: ["二选一：打出职业卡，或朴素生孩子。", "职业卡未来开放。", "朴素生孩子：第5回合后，且有空房间时新增1家庭成员。"],
-    restrictions: ["职业卡内容未来开放"],
+    rules: ["二选一：打出职业卡，或朴素生孩子。", "朴素生孩子：第5回合后，且有空房间时新增1家庭成员。"],
+    restrictions: [],
     occupiedBy: null,
     effects: [
       {
         type: "chooseOne",
         effects: [
-          { type: "playOccupationPlaceholder", label: "打出职业卡", description: "职业卡将在后续版本开放。" },
+          { type: "playOccupation", label: "打出职业卡", description: "从手牌选择1张职业卡打出。" },
           { type: "familyGrowth", label: "朴素生孩子", description: "第5回合后，且有空房间时新增1家庭成员。", requiresRoom: true, minimumRound: 5 },
         ],
       },
@@ -279,15 +279,15 @@ export const playerExpandActions: ActionDefinition[] = [
     cost: {},
     gain: {},
     prerequisites: [],
-    rules: ["二选一：打出小设施，或第5回合后购买大设施。", "当前版本小设施暂未开放。"],
-    restrictions: ["小设施内容未来开放"],
+    rules: ["二选一：打出小设施，或第5回合后购买大设施。"],
+    restrictions: [],
     occupiedBy: null,
     effects: [
       {
         type: "chooseOne",
         effects: [
-          { type: "playMinorImprovementPlaceholder", label: "打出小设施", description: "小设施将在后续版本开放。" },
-          { type: "buyMajorImprovement", label: "购买大设施", description: "第5回合后，支付资源购买1张大设施。" },
+          { type: "playMinorImprovement", label: "打出小设施", description: "从手牌选择1张小设施打出。" },
+          { type: "buyMajorImprovement", label: "购买大设施", description: "第5回合后，支付资源购买1张大设施。", minimumRound: 5 },
         ],
       },
     ],

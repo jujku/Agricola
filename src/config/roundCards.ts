@@ -28,15 +28,15 @@ export const roundActionDefinitions: ActionDefinition[] = [
     cost: {},
     gain: {},
     prerequisites: [],
-    rules: ["二选一：购买大设施，或打出小设施。", "当前版本小设施暂未开放，但大设施仍可购买。"],
-    restrictions: ["小设施内容未来开放"],
+    rules: ["二选一：购买大设施，或打出小设施。", "打出小设施时从手牌选择1张并支付成本。"],
+    restrictions: [],
     occupiedBy: null,
     effects: [
       {
         type: "chooseOne",
         effects: [
           { type: "buyMajorImprovement", label: "购买大设施", description: "支付对应资源，获得一张未被购买的大设施。" },
-          { type: "playMinorImprovementPlaceholder", label: "打出小设施", description: "小设施将在后续版本开放。" },
+          { type: "playMinorImprovement", label: "打出小设施", description: "从手牌选择1张小设施打出。" },
         ],
       },
     ],
@@ -104,7 +104,7 @@ export const roundActionDefinitions: ActionDefinition[] = [
     cost: {},
     gain: {},
     prerequisites: ["所有房屋必须一起翻修"],
-    rules: ["必须先翻修房屋，翻修后可选择购买大设施或打出小设施。", "所有房屋必须一次全部翻修。", "木屋翻成黏土屋：每间1黏土，额外1芦苇。", "黏土屋翻成石屋：每间1石头，额外1芦苇。", "当前版本小设施暂未开放。"],
+    rules: ["必须先翻修房屋，翻修后可选择购买大设施或打出小设施。", "所有房屋必须一次全部翻修。", "木屋翻成黏土屋：每间1黏土，额外1芦苇。", "黏土屋翻成石屋：每间1石头，额外1芦苇。"],
     restrictions: [],
     occupiedBy: null,
     effects: [
@@ -113,7 +113,7 @@ export const roundActionDefinitions: ActionDefinition[] = [
         effects: [
           { type: "renovate", id: "redevelop-renovate", label: "翻修房屋", description: "所有房屋必须一次全部翻修。", allowMajorImprovement: false },
           { type: "buyMajorImprovement", id: "redevelop-major", label: "购买大设施", description: "必须先完成翻修，随后支付资源购买1张大设施。", requiresSelectedEffectTypes: ["renovate"] },
-          { type: "playMinorImprovementPlaceholder", id: "redevelop-minor", label: "打出小设施", description: "必须先完成翻修；小设施将在后续版本开放。", requiresSelectedEffectTypes: ["renovate"] },
+          { type: "playMinorImprovement", id: "redevelop-minor", label: "打出小设施", description: "必须先完成翻修，再从手牌选择1张小设施打出。", requiresSelectedEffectTypes: ["renovate"] },
         ],
       },
     ],
@@ -143,15 +143,15 @@ export const roundActionDefinitions: ActionDefinition[] = [
     cost: {},
     gain: {},
     prerequisites: ["空房间数量 >= 1"],
-    rules: ["必须先新增1家庭成员。", "新成员下轮开始可行动。", "之后可打出1张小设施；当前版本小设施暂未开放。"],
-    restrictions: ["小设施内容未来开放"],
+    rules: ["必须先新增1家庭成员。", "新成员下轮开始可行动。", "之后可打出1张小设施。"],
+    restrictions: [],
     occupiedBy: null,
     effects: [
       {
         type: "chooseAny",
         effects: [
           { type: "familyGrowth", id: "family-growth-room", label: "生孩子", description: "需要至少1个空房间；新成员下轮开始可行动。", requiresRoom: true },
-          { type: "playMinorImprovementPlaceholder", id: "family-growth-minor", label: "打出小设施", description: "必须先生孩子；小设施将在后续版本开放。", requiresSelectedEffectTypes: ["familyGrowth"] },
+          { type: "playMinorImprovement", id: "family-growth-minor", label: "打出小设施", description: "必须先生孩子，再从手牌选择1张小设施打出。", requiresSelectedEffectTypes: ["familyGrowth"] },
         ],
       },
     ],

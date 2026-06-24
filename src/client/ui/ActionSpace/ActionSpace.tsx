@@ -169,6 +169,8 @@ function effectTypeLabel(type: string): string {
     sow: "播种",
     bakeBread: "烤面包",
     buyMajorImprovement: "购买大设施",
+    playOccupation: "打出职业卡",
+    playMinorImprovement: "打出小设施",
     playOccupationPlaceholder: "打出职业卡",
     playMinorImprovementPlaceholder: "打出小设施",
     takeStartingPlayer: "拿起始玩家",

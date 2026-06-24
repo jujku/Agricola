@@ -22,15 +22,47 @@ export interface AuthSuccessPayload {
 
 export interface CreateRoomPayload {
   playerName: string;
+  enableCardDraft?: boolean;
+  roomPassword?: string;
+  draftTimeLimitMinutes?: number | null;
 }
 
 export interface JoinRoomPayload {
   roomId: string;
   playerName: string;
+  roomPassword?: string;
 }
 
 export interface StartGamePayload {
   roomId: string;
+}
+
+export interface AddComputerPlayerPayload {
+  roomId: string;
+}
+
+export interface SetPlayerReadyPayload {
+  roomId: string;
+  playerId: string;
+  ready: boolean;
+}
+
+export interface ConfirmGameEndPayload {
+  roomId: string;
+  playerId: string;
+}
+
+export interface SubmitCardDraftPickPayload {
+  roomId: string;
+  playerId: string;
+  minorImprovementId: string;
+  occupationId: string;
+}
+
+export interface SubmitCardChoicePayload {
+  roomId: string;
+  playerId: string;
+  input?: ActionInput;
 }
 
 export interface LeaveRoomPayload {
@@ -96,6 +128,18 @@ export interface AdminAdjustResourcePayload {
   delta: number;
 }
 
+export interface AdminAddCardToHandPayload {
+  roomId: string;
+  playerId: string;
+  kind: "minor" | "occupation";
+  cardId: string;
+}
+
+export interface AdminToggleActionSpaceOccupiedPayload {
+  roomId: string;
+  actionSpaceId: string;
+}
+
 export interface ActionNotice {
   message: string;
 }
@@ -104,10 +148,14 @@ export interface RoomListItem {
   roomId: string;
   phase: GameState["phase"];
   round: number;
+  enableCardDraft?: boolean;
+  hasRoomPassword?: boolean;
+  draftTimeLimitMinutes?: number | null;
   isTestRoom?: boolean;
   players: Array<{
     id: string;
     name: string;
+    isComputer?: boolean;
   }>;
 }
 
@@ -145,6 +193,7 @@ export interface CookInput {
 
 export interface HarvestConversionInput {
   improvementId: string;
+  conversionId?: string;
   count: number;
 }
 
@@ -166,6 +215,8 @@ export interface ActionInput {
   overflowAnimalResolution?: AnimalOverflowResolution;
   sow?: SowInput[];
   majorImprovementId?: string;
+  occupationCardId?: string;
+  minorImprovementCardId?: string;
   upgradeFromId?: string;
   bake?: {
     improvementId: string;
@@ -186,4 +237,6 @@ export interface ActionInput {
     grainTrades?: number;
     fieldTrades?: CellPosition[];
   };
+  useCardActionAccess?: boolean;
+  usePendingActionAccess?: boolean;
 }

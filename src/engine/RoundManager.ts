@@ -34,19 +34,26 @@ export class RoundManager {
       };
     });
     const roundCards = nextCard ? [...state.roundCards, nextCard] : state.roundCards;
-    const players = state.players.map((player) => this.cardManager.applyRoundStartFood(player, state.round));
+    const cardPrepared = this.cardManager.applyRoundStart({
+      ...state,
+      actionSpaces: replenished,
+      roundCards,
+    });
+    const players = cardPrepared.players.map((player) => this.cardManager.applyRoundStartFood(player, state.round));
 
     return {
-      ...state,
+      ...cardPrepared,
       phase: "WORK_PHASE",
       stage: "WORK_PHASE",
       harvestField: null,
       harvestFeeding: null,
       harvestBreeding: null,
       roundDeck: state.roundDeck.slice(nextCard ? 1 : 0),
-      roundCards,
-      actionSpaces: replenished,
+      roundCards: cardPrepared.roundCards,
+      actionSpaces: cardPrepared.actionSpaces,
       players,
+      workPhaseActionCount: 0,
+      lastActionOrdinalByPlayerId: {},
       currentPlayerIndex: this.findStartingPlayerIndex(state),
       currentPlayer: state.startingPlayer,
       actionLog: [...state.actionLog, `第${state.round}轮准备完成。`],
@@ -54,7 +61,8 @@ export class RoundManager {
   }
 
   returnHome(state: GameState): GameState {
-    const players = state.players.map((player) => ({
+    const cardResolved = this.cardManager.applyReturnHome(state);
+    const players = cardResolved.players.map((player) => ({
       ...player,
       workers: player.workers.map((worker) => ({
         ...worker,
@@ -63,10 +71,10 @@ export class RoundManager {
       })),
     }));
     const actionSpaces = state.actionSpaces.map((space) => ({ ...space, occupiedBy: null }));
-    const isHarvest = harvestRounds.includes(state.round);
+    const isHarvest = harvestRounds.includes(cardResolved.round);
 
     return {
-      ...state,
+      ...cardResolved,
       phase: isHarvest ? "HARVEST" : "NEXT_ROUND",
       stage: isHarvest ? "HARVEST" : "NEXT_ROUND",
       players,

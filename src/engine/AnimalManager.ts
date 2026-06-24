@@ -3,12 +3,26 @@ import type { AnimalKey } from "../config/baseActions";
 import { majorImprovements } from "../config/majorImprovements";
 import type { AnimalCookInput, AnimalPlacementInput, CookInput } from "../shared/types";
 import type { PlayerState } from "../state/PlayerState";
+import { cardCapacityBonus } from "../shared/cardEffectUtils";
 import { FarmManager } from "./FarmManager";
 
 type AnimalCounts = Record<AnimalKey, number>;
 
 export class AnimalManager {
   private farmManager = new FarmManager();
+
+  resolveAnimalGain(player: PlayerState, animal: AnimalKey, amount: number, input?: AnimalPlacementInput): PlayerState {
+    if (amount <= 0) {
+      return player;
+    }
+    if (input) {
+      if (input.animal !== animal) {
+        throw new Error("动物安置类型与获得的动物不一致。");
+      }
+      return this.placeAnimals(player, input, amount);
+    }
+    return this.addAnimals(player, animal, amount);
+  }
 
   addAnimals(player: PlayerState, animal: AnimalKey, amount: number): PlayerState {
     if (player.farm.fences || player.farm.animalHousing) {
@@ -157,13 +171,16 @@ export class AnimalManager {
   private capacitySlots(player: PlayerState): number[] {
     if (player.farm.fences || player.farm.animalHousing) {
       const farm = this.farmManager.migrateFarm(player.farm);
-      const houseSlot = farm.animalHousing.house.count > 0 ? 0 : animalCapacityRules.house;
+      const houseCapacity = animalCapacityRules.house + cardCapacityBonus(player, "houseAnimals");
+      const houseSlot = Math.max(0, houseCapacity - farm.animalHousing.house.count);
       const stableSlots = farm.animalHousing.stables.map((stable) => Math.max(0, animalCapacityRules.stableWithoutFence - stable.count));
-      const pastureSlots = farm.pastures.map((pasture) => Math.max(0, pasture.capacity - pasture.animalCount));
-      return [houseSlot, ...stableSlots, ...pastureSlots].filter((capacity) => capacity > 0);
+      const pastureBonus = cardCapacityBonus(player, "pasture");
+      const pastureSlots = farm.pastures.map((pasture) => Math.max(0, pasture.capacity + pastureBonus - pasture.animalCount));
+      const cardStorage = cardCapacityBonus(player, "cardAnimals");
+      return [houseSlot, ...stableSlots, ...pastureSlots, cardStorage].filter((capacity) => capacity > 0);
     }
 
-    const houseCapacity = animalCapacityRules.house;
+    const houseCapacity = animalCapacityRules.house + cardCapacityBonus(player, "houseAnimals");
     const stableSlots = player.farm.cells
       .filter((cell) => cell.stable && !cell.pastureId)
       .map(() => animalCapacityRules.stableWithoutFence);
@@ -175,7 +192,7 @@ export class AnimalManager {
       return oneCellCapacity * pasture.cells.length;
     });
 
-    return [houseCapacity, ...stableSlots, ...pastureSlots].filter((capacity) => capacity > 0);
+    return [houseCapacity, ...stableSlots, ...pastureSlots, cardCapacityBonus(player, "cardAnimals")].filter((capacity) => capacity > 0);
   }
 
   private addAnimalsToAvailableHousing(player: PlayerState, animal: AnimalKey, amount: number): PlayerState {
@@ -185,7 +202,7 @@ export class AnimalManager {
 
     nextPlayer.farm.pastures.forEach((pasture) => {
       if (remaining <= 0 || (pasture.animalType && pasture.animalType !== animal)) return;
-      const available = pasture.capacity - pasture.animalCount;
+      const available = pasture.capacity + cardCapacityBonus(player, "pasture") - pasture.animalCount;
       const count = Math.min(remaining, available);
       if (count <= 0) return;
       const targetCell = pasture.cells[0];
@@ -200,9 +217,11 @@ export class AnimalManager {
       remaining -= 1;
     });
 
-    if (remaining > 0 && nextPlayer.farm.animalHousing.house.count === 0) {
-      placements.push({ type: "house", count: 1 });
-      remaining -= 1;
+    const houseCapacity = animalCapacityRules.house + cardCapacityBonus(player, "houseAnimals");
+    if (remaining > 0 && nextPlayer.farm.animalHousing.house.count < houseCapacity) {
+      const count = Math.min(remaining, houseCapacity - nextPlayer.farm.animalHousing.house.count);
+      placements.push({ type: "house", count });
+      remaining -= count;
     }
 
     return this.farmManager.placeAnimals(nextPlayer, animal, amount, placements);

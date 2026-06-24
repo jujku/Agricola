@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "status": "art-reference-only",
+  "cardsImplemented": true,
+  "runtimeArtworkImported": false,
+  "sheets": [
+    {
+      "id": "minor-improvements-sheet-01",
+      "type": "minorImprovement",
+      "expectedFile": "minor-improvements-sheet-01.png",
+      "sourceNote": "User supplied first image as minor improvement card reference sheet."
+    },
+    {
+      "id": "occupations-sheet-01",
+      "type": "occupation",
+      "expectedFile": "occupations-sheet-01.png",
+      "sourceNote": "User supplied second image as occupation card reference sheet."
+    },
+    {
+      "id": "occupations-sheet-02",
+      "type": "occupation",
+      "expectedFile": "occupations-sheet-02.png",
+      "sourceNote": "User supplied third image as occupation card reference sheet."
+    }
+  ]
+}

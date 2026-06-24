@@ -22,6 +22,8 @@ export type ActionEffect =
   | (ActionEffectMeta & { type: "sow" })
   | (ActionEffectMeta & { type: "bakeBread" })
   | (ActionEffectMeta & { type: "buyMajorImprovement"; minimumRound?: number })
+  | (ActionEffectMeta & { type: "playOccupation" })
+  | (ActionEffectMeta & { type: "playMinorImprovement" })
   | (ActionEffectMeta & { type: "playOccupationPlaceholder" })
   | (ActionEffectMeta & { type: "playMinorImprovementPlaceholder" })
   | (ActionEffectMeta & { type: "takeStartingPlayer" })
@@ -176,14 +178,14 @@ export const baseActions: ActionDefinition[] = [
   {
     id: "lessons",
     name: "课程",
-    type: "placeholder",
+    type: "instant",
     cost: {},
     gain: {},
     prerequisites: [],
-    rules: ["打出职业卡"],
-    restrictions: ["职业卡内容未来开放"],
+    rules: ["打出1张职业卡"],
+    restrictions: [],
     occupiedBy: null,
-    effects: [{ type: "playOccupationPlaceholder" }],
+    effects: [{ type: "playOccupation" }],
     playerCounts: allPlayerCounts,
     replenish: {},
   },
@@ -194,15 +196,15 @@ export const baseActions: ActionDefinition[] = [
     cost: {},
     gain: {},
     prerequisites: [],
-    rules: ["可获得起始玩家标记。", "可打出1张职业卡并支付食物。", "也可两者都执行。"],
-    restrictions: ["职业卡内容未来开放"],
+    rules: ["可获得起始玩家标记。", "可打出1张职业卡。", "也可两者都执行。"],
+    restrictions: [],
     occupiedBy: null,
     effects: [
       {
         type: "chooseAny",
         effects: [
           { type: "takeStartingPlayer", label: "拿起始玩家", description: "获得起始玩家标记，下回合优先行动。" },
-          { type: "playOccupationPlaceholder", label: "打出职业卡", description: "支付食物后打出1张职业卡；当前版本为占位。" },
+          { type: "playOccupation", label: "打出职业卡", description: "从手牌选择1张职业卡打出。" },
         ],
       },
     ],

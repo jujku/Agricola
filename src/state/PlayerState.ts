@@ -28,6 +28,23 @@ export interface PendingFood {
   amount: number;
 }
 
+export interface PendingGood {
+  round: number;
+  sourceCardId?: string;
+  resources?: Partial<ResourceState>;
+  animals?: Partial<AnimalState>;
+}
+
+export interface PlayedCardRuntimeState {
+  cardId: string;
+  playedRound: number;
+  markers: Record<string, number>;
+  storedAnimals: Partial<AnimalState>;
+  storedGoods: Partial<ResourceState>;
+  bonusPoints: number;
+  flipped?: boolean;
+}
+
 export interface ScoreBreakdown {
   fields: number;
   pastures: number;
@@ -51,14 +68,19 @@ export interface ScoreBreakdown {
 export interface PlayerState {
   id: string;
   name: string;
+  isComputer?: boolean;
   resources: ResourceState;
   animals: AnimalState;
   workers: WorkerState[];
+  occupationHand: string[];
+  minorImprovementHand: string[];
   occupations: string[];
   minorImprovements: string[];
   majorImprovements: string[];
   farm: FarmState;
   beggingCards: number;
   pendingFood: PendingFood[];
+  pendingGoods: PendingGood[];
+  cardStates: Record<string, PlayedCardRuntimeState>;
   score: ScoreBreakdown | null;
 }

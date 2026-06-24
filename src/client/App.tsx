@@ -1,17 +1,25 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { majorImprovements } from "../config/majorImprovements";
+import { getMinorImprovement, minorImprovements } from "../config/minorImprovements";
+import { getOccupation, occupations } from "../config/occupations";
 import type { AnimalCookInput, AnimalOverflowResolution, RoomListItem } from "../shared/types";
 import {
   adjustAdminResource,
   advanceAdminRound,
+  addAdminCardToHand,
+  addComputerPlayer,
   createRoom,
+  confirmGameEnd,
   joinRoom,
   leaveRoom,
   login,
   logout,
   register,
   restartAdminTestRoom,
+  setPlayerReady,
+  startAdminHarvest,
   startGame,
+  submitCardDraftPick,
   submitHarvestBreeding,
   submitHarvestFeeding,
   submitHarvestField,
@@ -19,6 +27,7 @@ import {
 } from "./socket/clientSocket";
 import { useGameStore } from "./store/gameStore";
 import { Board } from "./ui/Board/Board";
+import { PlayableCardFace, type PlayableCardDefinition, type PlayableCardKind } from "./ui/Cards/PlayableCard";
 import { Farm } from "./ui/Farm/Farm";
 import { OperationLog } from "./ui/OperationLog/OperationLog";
 import { Resources } from "./ui/Resources/Resources";
@@ -34,11 +43,15 @@ type Animal = AnimalCookInput["animal"];
 type BadgeType = "wood" | "clay" | "reed" | "stone" | "grain" | "vegetable" | "food" | "begging" | Animal;
 type HarvestConversionOption = {
   cardId: string;
+  conversionId?: string;
+  optionKey: string;
   cardName: string;
   resource: BadgeType;
   amount: number;
   food: number;
   max: number;
+  outputResource?: BadgeType;
+  outputAmount?: number;
 };
 type AdminAdjustKey = Parameters<typeof adjustAdminResource>[2];
 
@@ -117,10 +130,10 @@ export function App() {
             setManualRoomId("");
             setScreen("main");
           }}
-          onCreateRoom={() => createRoom(username)}
-          onJoinManualRoom={() => joinRoom(manualRoomId.trim(), username)}
+          onCreateRoom={(settings) => createRoom(username, settings)}
+          onJoinManualRoom={(roomPassword) => joinRoom(manualRoomId.trim(), username, roomPassword)}
           onManualRoomIdChange={setManualRoomId}
-          onJoinRoom={(room) => joinRoom(room.roomId, username)}
+          onJoinRoom={(room, roomPassword) => joinRoom(room.roomId, username, roomPassword)}
           onLogout={logout}
         />
         <NoticeOverlay message={notice} onDone={() => setNotice(null)} />
@@ -136,6 +149,25 @@ export function App() {
   const feedingSubmitted = Boolean(game.harvestFeeding?.submittedPlayerIds.includes(username));
   const breedingSubmitted = Boolean(game.harvestBreeding?.submittedPlayerIds.includes(username));
 
+  if (game.phase === "CARD_DRAFT") {
+    return (
+      <>
+        <CardDraftPage game={game} roomId={roomId} username={username} onLeave={() => setConfirmLeaveOpen(true)} />
+        <ConfirmOverlay
+          open={confirmLeaveOpen}
+          title="退出房间"
+          message="确认退出房间吗？退出后将返回大厅。"
+          onCancel={() => setConfirmLeaveOpen(false)}
+          onConfirm={() => {
+            setConfirmLeaveOpen(false);
+            if (roomId) leaveRoom(roomId);
+          }}
+        />
+        <NoticeOverlay message={notice} onDone={() => setNotice(null)} />
+      </>
+    );
+  }
+
   return (
     <main className="app-shell">
       <header className="topbar">
@@ -150,7 +182,32 @@ export function App() {
           <span className="pill">第 {game.round} 轮</span>
           <span className="pill">{translatePhase(game.phase)}</span>
           {roomId === "admin-test" ? <span className="pill ok">测试房</span> : null}
-          {game.phase === "WAITING" ? <button onClick={() => roomId && startGame(roomId)}>开始游戏</button> : null}
+          {game.phase === "WAITING" && roomId && myPlayer ? (
+            <>
+              {game.hostPlayerId === username ? (
+                <>
+                  <button className="secondary-button" onClick={() => addComputerPlayer(roomId)} disabled={game.players.length >= 6}>
+                    添加电脑玩家
+                  </button>
+                  <button onClick={() => startGame(roomId)} disabled={game.players.length < 2 || game.readyPlayerIds.length !== game.players.length}>
+                    开始游戏
+                  </button>
+                </>
+              ) : (
+                <button
+                  className={game.readyPlayerIds.includes(username) ? "secondary-button" : ""}
+                  onClick={() => setPlayerReady(roomId, username, !game.readyPlayerIds.includes(username))}
+                >
+                  {game.readyPlayerIds.includes(username) ? "取消准备" : "准备"}
+                </button>
+              )}
+            </>
+          ) : null}
+          {game.phase === "GAME_END" && roomId ? (
+            <button disabled={game.gameEndConfirmedPlayerIds.includes(username)} onClick={() => confirmGameEnd(roomId, username)}>
+              {game.gameEndConfirmedPlayerIds.includes(username) ? "已确认结算" : "确认结算"}
+            </button>
+          ) : null}
           <button className="secondary-button" onClick={() => setConfirmLeaveOpen(true)}>
             退出房间
           </button>
@@ -176,8 +233,14 @@ export function App() {
                   </span>
                   <span>
                     {player.name}
+                    {player.isComputer ? "（电脑）" : ""}
                     {player.id === username ? "（我）" : ""}
                   </span>
+                  {game.phase === "WAITING" ? (
+                    <span className={game.readyPlayerIds.includes(player.id) ? "player-ready-badge" : "player-waiting-badge"}>
+                      {player.id === game.hostPlayerId ? "房主" : game.readyPlayerIds.includes(player.id) ? "已准备" : "未准备"}
+                    </span>
+                  ) : null}
                   <small>
                     {player.id === game.startingPlayer ? (
                       <span className="starting-player-mark" title="起始玩家">
@@ -219,10 +282,15 @@ export function App() {
       <ConfirmOverlay
         open={confirmLeaveOpen}
         title="退出房间"
-        message="确认退出房间吗？退出后将返回大厅。"
+        message={game.phase === "GAME_END" ? "确认离开结算房间吗？离开后房间会在所有玩家确认后关闭。" : "确认退出房间吗？退出后将返回大厅。"}
         onCancel={() => setConfirmLeaveOpen(false)}
         onConfirm={() => {
           setConfirmLeaveOpen(false);
+          if (game.phase === "GAME_END" && roomId) {
+            confirmGameEnd(roomId, username);
+            setScreen("lobby");
+            return;
+          }
           setScreen("lobby");
           if (roomId) leaveRoom(roomId);
         }}
@@ -252,7 +320,10 @@ export function App() {
             vegetableToFood,
             feedingCookedAnimals,
             [],
-            Object.entries(harvestConversions).map(([improvementId, count]) => ({ improvementId, count })),
+            Object.entries(harvestConversions).map(([key, count]) => {
+              const [improvementId, conversionId] = key.split("::");
+              return { improvementId, conversionId: conversionId || undefined, count };
+            }),
           )
         }
         onVegetableToFoodChange={setVegetableToFood}
@@ -374,14 +445,16 @@ function LobbyPage({
   rooms: RoomListItem[];
   username: string;
   onBackToMain: () => void;
-  onCreateRoom: () => void;
-  onJoinManualRoom: () => void;
+  onCreateRoom: (settings: { enableCardDraft: boolean; roomPassword: string; draftTimeLimitMinutes: number | null }) => void;
+  onJoinManualRoom: (roomPassword: string) => void;
   onManualRoomIdChange: (roomId: string) => void;
-  onJoinRoom: (room: RoomListItem) => void;
+  onJoinRoom: (room: RoomListItem, roomPassword: string) => void;
   onLogout: () => void;
 }) {
   const visibleRooms = rooms.filter((room) => /^\d+$/.test(room.roomId) && room.phase === "WAITING");
   const testRooms = rooms.filter((room) => room.isTestRoom);
+  const [createRoomOpen, setCreateRoomOpen] = useState(false);
+  const [joinPasswordRoom, setJoinPasswordRoom] = useState<RoomListItem | null>(null);
 
   return (
     <main className="app-shell">
@@ -406,15 +479,17 @@ function LobbyPage({
             <h2>当前房间</h2>
             <p className="muted">只显示等待中的可加入房间。</p>
           </div>
-          <button onClick={onCreateRoom}>创建房间</button>
+          <div className="create-room-controls">
+            <button onClick={() => setCreateRoomOpen(true)}>创建房间</button>
+          </div>
         </div>
         <div className="manual-join">
           <input value={manualRoomId} onChange={(event) => onManualRoomIdChange(event.target.value)} placeholder="输入房间编号" />
-          <button onClick={onJoinManualRoom}>加入房间</button>
+          <button onClick={() => manualRoomId.trim() && setJoinPasswordRoom({ roomId: manualRoomId.trim(), phase: "WAITING", round: 0, enableCardDraft: false, players: [] })}>加入房间</button>
         </div>
         <div className="room-list">
           {testRooms.map((room) => (
-            <button key={room.roomId} className="room-card room-card--test" onClick={() => onJoinRoom(room)}>
+            <button key={room.roomId} className="room-card room-card--test" onClick={() => onJoinRoom(room, "")}>
               <span className="room-number">测试房</span>
               <span>{translatePhase(room.phase)} / 第 {room.round} 轮</span>
               <small>仅管理员可见，可重开、推进回合、调整资源</small>
@@ -425,23 +500,260 @@ function LobbyPage({
             testRooms.length === 0 ? <p className="muted">当前没有可加入房间。</p> : null
           ) : (
             visibleRooms.map((room) => (
-              <button key={room.roomId} className="room-card" onClick={() => onJoinRoom(room)}>
+              <button key={room.roomId} className="room-card" onClick={() => (room.hasRoomPassword ? setJoinPasswordRoom(room) : onJoinRoom(room, ""))}>
                 <span className="room-number">#{room.roomId}</span>
                 <span>{translatePhase(room.phase)}</span>
                 <small>
-                  {room.players.length} 人 / 第 {room.round} 轮
+                  {room.players.length} 人 / 第 {room.round} 轮 / {room.enableCardDraft ? "轮抽" : "普通发牌"}
                 </small>
+                <small>{room.hasRoomPassword ? "已设密码" : "公开房间"}{room.draftTimeLimitMinutes ? ` / 轮抽 ${room.draftTimeLimitMinutes} 分钟` : " / 轮抽无限时"}</small>
                 <strong>点击加入</strong>
               </button>
             ))
           )}
         </div>
       </section>
+      <CreateRoomModal
+        open={createRoomOpen}
+        onClose={() => setCreateRoomOpen(false)}
+        onCreate={(settings) => {
+          onCreateRoom(settings);
+          setCreateRoomOpen(false);
+        }}
+      />
+      <JoinRoomPasswordModal
+        open={Boolean(joinPasswordRoom)}
+        roomId={joinPasswordRoom?.roomId ?? ""}
+        onClose={() => setJoinPasswordRoom(null)}
+        onJoin={(roomPassword) => {
+          const room = joinPasswordRoom;
+          setJoinPasswordRoom(null);
+          if (!room) return;
+          if (room.roomId === manualRoomId.trim()) {
+            onJoinManualRoom(roomPassword);
+            return;
+          }
+          onJoinRoom(room, roomPassword);
+        }}
+      />
     </main>
   );
 }
 
+function CreateRoomModal({
+  onClose,
+  onCreate,
+  open,
+}: {
+  onClose: () => void;
+  onCreate: (settings: { enableCardDraft: boolean; roomPassword: string; draftTimeLimitMinutes: number | null }) => void;
+  open: boolean;
+}) {
+  const [enableCardDraft, setEnableCardDraft] = useState(false);
+  const [roomPassword, setRoomPassword] = useState("");
+  const [draftTimeLimitText, setDraftTimeLimitText] = useState("");
+
+  if (!open) return null;
+  const draftTimeLimitMinutes = draftTimeLimitText.trim() ? Math.max(0, Math.floor(Number(draftTimeLimitText))) : null;
+  const canCreate = !draftTimeLimitText.trim() || Number.isFinite(Number(draftTimeLimitText));
+
+  return (
+    <div className="modal-layer" role="dialog" aria-modal="true" aria-labelledby="create-room-title">
+      <section className="game-modal room-settings-modal">
+        <span className="game-modal__eyebrow">房间设置</span>
+        <h2 id="create-room-title">创建房间</h2>
+        <div className="room-settings-form">
+          <label className="room-setting-row room-setting-row--toggle">
+            <input type="checkbox" checked={enableCardDraft} onChange={(event) => setEnableCardDraft(event.target.checked)} />
+            <span>
+              <b>开启轮抽</b>
+              <small>开局前先轮抽职业卡和小设施卡。</small>
+            </span>
+          </label>
+          <label className="room-setting-row">
+            <span>房间密码</span>
+            <input type="password" value={roomPassword} onChange={(event) => setRoomPassword(event.target.value)} placeholder="不填则公开" />
+          </label>
+          <label className="room-setting-row">
+            <span>每轮轮抽时间</span>
+            <input inputMode="numeric" min={0} type="number" value={draftTimeLimitText} onChange={(event) => setDraftTimeLimitText(event.target.value)} placeholder="无限时间" />
+          </label>
+          <p className="muted">单位为分钟；不填或填 0 表示无限时间。</p>
+        </div>
+        <footer className="game-modal__actions">
+          <button className="secondary-button" onClick={onClose}>
+            取消
+          </button>
+          <button
+            disabled={!canCreate}
+            onClick={() =>
+              onCreate({
+                enableCardDraft,
+                roomPassword,
+                draftTimeLimitMinutes: draftTimeLimitMinutes && draftTimeLimitMinutes > 0 ? draftTimeLimitMinutes : null,
+              })
+            }
+          >
+            创建房间
+          </button>
+        </footer>
+      </section>
+    </div>
+  );
+}
+
+function JoinRoomPasswordModal({
+  onClose,
+  onJoin,
+  open,
+  roomId,
+}: {
+  onClose: () => void;
+  onJoin: (roomPassword: string) => void;
+  open: boolean;
+  roomId: string;
+}) {
+  const [roomPassword, setRoomPassword] = useState("");
+
+  useEffect(() => {
+    if (open) setRoomPassword("");
+  }, [open, roomId]);
+
+  if (!open) return null;
+  return (
+    <div className="modal-layer" role="dialog" aria-modal="true" aria-labelledby="join-room-title">
+      <section className="game-modal room-settings-modal">
+        <span className="game-modal__eyebrow">加入房间</span>
+        <h2 id="join-room-title">房间 #{roomId}</h2>
+        <div className="room-settings-form">
+          <label className="room-setting-row">
+            <span>房间密码</span>
+            <input type="password" value={roomPassword} onChange={(event) => setRoomPassword(event.target.value)} placeholder="没有密码可留空" autoFocus />
+          </label>
+        </div>
+        <footer className="game-modal__actions">
+          <button className="secondary-button" onClick={onClose}>
+            取消
+          </button>
+          <button onClick={() => onJoin(roomPassword)}>加入房间</button>
+        </footer>
+      </section>
+    </div>
+  );
+}
+
+function CardDraftPage({ game, onLeave, roomId, username }: { game: NonNullable<ReturnType<typeof useGameStore.getState>["game"]>; roomId: string | null; username: string; onLeave: () => void }) {
+  const player = game.players.find((candidate) => candidate.id === username) ?? null;
+  const pack = game.cardDraft?.packs.find((candidate) => candidate.playerId === username) ?? null;
+  const submitted = Boolean(game.cardDraft?.pendingSelections[username]);
+  const [selectedMinorId, setSelectedMinorId] = useState<string | null>(null);
+  const [selectedOccupationId, setSelectedOccupationId] = useState<string | null>(null);
+  const minorCards = pack?.minorImprovementIds.map((id) => getMinorImprovement(id)).filter((card): card is NonNullable<ReturnType<typeof getMinorImprovement>> => Boolean(card)) ?? [];
+  const occupationCards = pack?.occupationIds.map((id) => getOccupation(id)).filter((card): card is NonNullable<ReturnType<typeof getOccupation>> => Boolean(card)) ?? [];
+  const ready = Boolean(roomId && player && selectedMinorId && selectedOccupationId && !submitted);
+  const submittedCount = Object.keys(game.cardDraft?.pendingSelections ?? {}).length;
+  const totalPlayers = game.players.length;
+
+  useEffect(() => {
+    setSelectedMinorId(null);
+    setSelectedOccupationId(null);
+  }, [game.cardDraft?.round, pack?.minorImprovementIds.join("|"), pack?.occupationIds.join("|")]);
+
+  return (
+    <main className="app-shell draft-shell">
+      <header className="topbar">
+        <div>
+          <h1>轮抽选牌</h1>
+          <p className="muted">
+            房间 {roomId} / 第 {game.cardDraft?.round ?? 1} 轮 / 玩家 {username}
+          </p>
+        </div>
+        <div className="status-line">
+          <span className="pill ok">轮抽中</span>
+          <span className="pill">已提交 {submittedCount}/{totalPlayers}</span>
+          <button className="secondary-button" onClick={onLeave}>
+            退出房间
+          </button>
+        </div>
+      </header>
+
+      <section className="panel draft-panel">
+        <div className="draft-summary">
+          <div>
+            <h2>选择 1 张小设施和 1 张职业</h2>
+            <p className="muted">所有玩家提交后，剩余牌包会传给下一名玩家；最后一名传给第一名。选满 7+7 后正式开始第 1 轮。</p>
+          </div>
+          <div className="draft-progress">
+            <strong>{player ? `${player.minorImprovementHand.length}/7 小设施` : "0/7 小设施"}</strong>
+            <strong>{player ? `${player.occupationHand.length}/7 职业` : "0/7 职业"}</strong>
+          </div>
+        </div>
+
+        {submitted ? <p className="draft-waiting">本轮选择已提交，等待其他玩家。</p> : null}
+
+        <div className="draft-columns">
+          <DraftCardColumn
+            cards={minorCards}
+            kind="minor"
+            selectedId={selectedMinorId}
+            title="小设施牌包"
+            onSelect={setSelectedMinorId}
+          />
+          <DraftCardColumn
+            cards={occupationCards}
+            kind="occupation"
+            selectedId={selectedOccupationId}
+            title="职业牌包"
+            onSelect={setSelectedOccupationId}
+          />
+        </div>
+
+        <footer className="game-modal__actions draft-actions">
+          <button
+            disabled={!ready}
+            onClick={() => {
+              if (!roomId || !player || !selectedMinorId || !selectedOccupationId) return;
+              submitCardDraftPick(roomId, player.id, selectedMinorId, selectedOccupationId);
+            }}
+          >
+            提交本轮选择
+          </button>
+        </footer>
+      </section>
+    </main>
+  );
+}
+
+function DraftCardColumn({
+  cards,
+  kind,
+  onSelect,
+  selectedId,
+  title,
+}: {
+  cards: PlayableCardDefinition[];
+  kind: PlayableCardKind;
+  selectedId: string | null;
+  title: string;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <section className="draft-column">
+      <h3>{title}</h3>
+      <div className="draft-card-list">
+        {cards.length === 0 ? <p className="muted">当前没有可选牌。</p> : null}
+        {cards.map((card) => (
+          <button key={card.id} className={card.id === selectedId ? "draft-card selected" : "draft-card"} onClick={() => onSelect(card.id)}>
+            <PlayableCardFace card={card} kind={kind} footer={<span className="playable-card__status">选择</span>} />
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function AdminTestPanel({ player, roomId }: { player: Player; roomId: string }) {
+  const [cardLibraryOpen, setCardLibraryOpen] = useState(false);
   const items: Array<{ key: AdminAdjustKey; label: string; icon: keyof typeof RESOURCE_ICONS; count: number }> = [
     { key: "wood", label: "木材", icon: "wood", count: player.resources.wood },
     { key: "clay", label: "黏土", icon: "clay", count: player.resources.clay },
@@ -469,6 +781,12 @@ function AdminTestPanel({ player, roomId }: { player: Player; roomId: string }) 
         <button className="secondary-button" onClick={() => advanceAdminRound(roomId)}>
           推进回合
         </button>
+        <button className="secondary-button" onClick={() => startAdminHarvest(roomId)}>
+          进入收获阶段
+        </button>
+        <button className="secondary-button" onClick={() => setCardLibraryOpen(true)}>
+          查看并添加卡牌
+        </button>
       </div>
       <div className="admin-resource-editor">
         {items.map((item) => {
@@ -489,7 +807,48 @@ function AdminTestPanel({ player, roomId }: { player: Player; roomId: string }) 
           );
         })}
       </div>
+      {cardLibraryOpen ? <AdminCardLibraryOverlay player={player} roomId={roomId} onClose={() => setCardLibraryOpen(false)} /> : null}
     </section>
+  );
+}
+
+function AdminCardLibraryOverlay({ player, roomId, onClose }: { player: Player; roomId: string; onClose: () => void }) {
+  const [kind, setKind] = useState<PlayableCardKind>("minor");
+  const cards: PlayableCardDefinition[] = kind === "minor" ? minorImprovements : occupations;
+  const hand = kind === "minor" ? player.minorImprovementHand : player.occupationHand;
+
+  return (
+    <div className="modal-layer" role="dialog" aria-modal="true">
+      <section className="game-modal admin-card-library-modal">
+        <h2>测试卡牌库</h2>
+        <div className="admin-card-library-tabs">
+          <button className={kind === "minor" ? "selected" : ""} onClick={() => setKind("minor")}>
+            小设施
+          </button>
+          <button className={kind === "occupation" ? "selected" : ""} onClick={() => setKind("occupation")}>
+            职业
+          </button>
+        </div>
+        <div className="admin-card-library-grid">
+          {cards.map((card) => {
+            const alreadyInHand = hand.includes(card.id);
+            return (
+              <article key={card.id} className="admin-card-library-entry">
+                <PlayableCardFace card={card} kind={kind} footer={<span className="playable-card__status">{alreadyInHand ? "已在手牌" : "测试添加"}</span>} />
+                <button disabled={alreadyInHand} onClick={() => addAdminCardToHand(roomId, player.id, kind, card.id)}>
+                  {alreadyInHand ? "已在手牌" : "加入手牌"}
+                </button>
+              </article>
+            );
+          })}
+        </div>
+        <footer className="game-modal__actions">
+          <button className="secondary-button" onClick={onClose}>
+            关闭
+          </button>
+        </footer>
+      </section>
+    </div>
   );
 }
 
@@ -635,8 +994,8 @@ function HarvestFeedingOverlay({
     onGrainToFoodChange(clampNumber(grainToFood, 0, player.resources.grain));
     onVegetableToFoodChange(clampNumber(vegetableToFood, 0, player.resources.vegetable));
     const normalized = options.reduce<Record<string, number>>((next, option) => {
-      const count = clampNumber(harvestConversions[option.cardId] ?? 0, 0, option.max);
-      if (count > 0) next[option.cardId] = count;
+      const count = clampNumber(harvestConversions[option.optionKey] ?? 0, 0, option.max);
+      if (count > 0) next[option.optionKey] = count;
       return next;
     }, {});
     if (JSON.stringify(normalized) !== JSON.stringify(harvestConversions)) {
@@ -663,7 +1022,7 @@ function HarvestFeedingOverlay({
   const normalizedGrain = clampNumber(grainToFood, 0, player.resources.grain);
   const normalizedVegetable = clampNumber(vegetableToFood, 0, player.resources.vegetable);
   const cookedFood = cookedAnimals.reduce((sum, item) => sum + item.count * cookValue(player, item.animal), 0);
-  const harvestConversionFood = options.reduce((sum, option) => sum + clampNumber(harvestConversions[option.cardId] ?? 0, 0, option.max) * option.food, 0);
+  const harvestConversionFood = options.reduce((sum, option) => sum + clampNumber(harvestConversions[option.optionKey] ?? 0, 0, option.max) * option.food, 0);
   const foodAfterConversion = player.resources.food + normalizedGrain + normalizedVegetable + cookedFood + harvestConversionFood;
   const requiredFood = player.workers.length * 2;
   const beggingCards = Math.max(0, requiredFood - foodAfterConversion);
@@ -690,7 +1049,7 @@ function HarvestFeedingOverlay({
           <ResourceBadge type="food" label="当前" count={player.resources.food} />
           <ResourceBadge type="food" label="转换后" count={foodAfterConversion} />
           <ResourceBadge type="food" label="烹饪" count={cookedFood} />
-          <ResourceBadge type="food" label="大设施" count={harvestConversionFood} />
+          <ResourceBadge type="food" label="卡牌转换" count={harvestConversionFood} />
           <ResourceBadge type="food" label="需要" count={requiredFood} />
           <FeedingCostBadge paidFood={paidFood} beggingCards={beggingCards} />
         </div>
@@ -776,14 +1135,14 @@ function HarvestMajorConversionPanel({
   if (options.length === 0) return null;
   return (
     <div className="harvest-major-conversion-panel">
-      <strong>收获大设施转换</strong>
+      <strong>收获卡牌转换</strong>
       <div className="harvest-controls">
         {options.map((option) => {
           const ResourceIcon = RESOURCE_ICONS[option.resource];
-          const current = clampNumber(value[option.cardId] ?? 0, 0, option.max);
+          const current = clampNumber(value[option.optionKey] ?? 0, 0, option.max);
           return (
             <HarvestConvertControl
-              key={option.cardId}
+              key={option.optionKey}
               disabled={disabled || option.max <= 0}
               icon={<ResourceIcon size={24} />}
               label={option.cardName}
@@ -793,9 +1152,9 @@ function HarvestMajorConversionPanel({
                 const normalized = clampNumber(nextValue, 0, option.max);
                 const next = { ...value };
                 if (normalized > 0) {
-                  next[option.cardId] = normalized;
+                  next[option.optionKey] = normalized;
                 } else {
-                  delete next[option.cardId];
+                  delete next[option.optionKey];
                 }
                 onChange(next);
               }}
@@ -807,8 +1166,8 @@ function HarvestMajorConversionPanel({
         {options.map((option) => {
           const ResourceIcon = RESOURCE_ICONS[option.resource];
           return (
-            <span key={option.cardId}>
-              <ResourceIcon size={16} /> × {option.amount} → <RESOURCE_ICONS.food size={16} /> × {option.food}
+            <span key={option.optionKey}>
+              <ResourceIcon size={16} /> × {option.amount} → {option.outputResource && option.outputResource !== "food" ? <BadgeIcon type={option.outputResource} /> : <RESOURCE_ICONS.food size={16} />} × {option.outputAmount ?? option.food}
             </span>
           );
         })}
@@ -1038,7 +1397,7 @@ function getBreedingTargets(player: Player, animal: Animal): Array<{ animal: Ani
 }
 
 function getHarvestConversionOptions(player: Player): HarvestConversionOption[] {
-  return player.majorImprovements.flatMap((cardId) => {
+  const majorOptions = player.majorImprovements.flatMap((cardId) => {
     const card = majorImprovements.find((candidate) => candidate.id === cardId);
     if (!card) return [];
     const effect = card.effects.find((candidate) => candidate.type === "harvestConvert");
@@ -1047,6 +1406,7 @@ function getHarvestConversionOptions(player: Player): HarvestConversionOption[] 
     return [
       {
         cardId: card.id,
+        optionKey: card.id,
         cardName: card.name,
         resource: effect.resource,
         amount: effect.amount,
@@ -1055,10 +1415,49 @@ function getHarvestConversionOptions(player: Player): HarvestConversionOption[] 
       },
     ];
   });
+  const cardOptions = [...player.occupations, ...player.minorImprovements].flatMap((cardId) => {
+    const card = getOccupation(cardId) ?? getMinorImprovement(cardId);
+    if (!card) return [];
+    return card.effects.flatMap((effect) => {
+      if (effect.type !== "conversion" || (effect.timing !== "harvest" && effect.timing !== "anytime")) return [];
+      const [fromResource, fromAmount] = firstBadgeEntry(effect.from);
+      const [toResource, toAmount] = firstBadgeEntry(effect.to);
+      if (!fromResource || !fromAmount || !toResource || !toAmount) return [];
+      const sourceAmount = isAnimal(fromResource) ? player.animals[fromResource] : isPlayerResource(fromResource) ? player.resources[fromResource] : 0;
+      return [
+        {
+          cardId: card.id,
+          conversionId: effect.id,
+          optionKey: `${card.id}::${effect.id ?? ""}`,
+          cardName: card.name,
+          resource: fromResource,
+          amount: fromAmount,
+          food: toResource === "food" ? toAmount : 0,
+          outputResource: toResource,
+          outputAmount: toAmount,
+          max: Math.floor(sourceAmount / fromAmount),
+        },
+      ];
+    });
+  });
+  return [...majorOptions, ...cardOptions];
+}
+
+function firstBadgeEntry(goods: Partial<Record<string, number>>): [BadgeType | null, number] {
+  const entry = Object.entries(goods).find((item): item is [BadgeType, number] => isBadgeType(item[0]) && (item[1] ?? 0) > 0);
+  return entry ?? [null, 0];
 }
 
 function isBadgeType(value: string): value is BadgeType {
   return value in RESOURCE_ICONS;
+}
+
+function isAnimal(value: BadgeType): value is Animal {
+  return value === "sheep" || value === "boar" || value === "cattle";
+}
+
+function isPlayerResource(value: BadgeType): value is keyof Player["resources"] {
+  return value === "wood" || value === "clay" || value === "reed" || value === "stone" || value === "grain" || value === "vegetable" || value === "food";
 }
 
 function canCookAnimal(player: Player): boolean {
@@ -1094,6 +1493,7 @@ function translatePhase(phase: string): string {
   const phases: Record<string, string> = {
     WAITING: "等待玩家",
     SETUP: "初始化",
+    CARD_DRAFT: "轮抽选牌",
     ROUND_PREPARE: "回合准备",
     WORK_PHASE: "工作阶段",
     RETURN_HOME: "工人回家",

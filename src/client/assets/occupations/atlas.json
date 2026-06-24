@@ -1,0 +1,3152 @@
+{
+  "meta": {
+    "sourceSheets": [
+      "职业卡1.png",
+      "职业卡2.png",
+      "职业卡3.png",
+      "职业卡4.png"
+    ],
+    "supplementalSources": [
+      "11杂货商.png"
+    ],
+    "trimMode": "Crop / Trim",
+    "detection": "alpha connected components, visually row-sorted; separated small props merged to nearest main sprite",
+    "padding": 8,
+    "extruded": true,
+    "sourceReports": [
+      {
+        "sheet": 1,
+        "source": "职业卡1.png",
+        "detectedMainSprites": 23,
+        "threshold": 1
+      },
+      {
+        "sheet": 2,
+        "source": "职业卡2.png",
+        "detectedMainSprites": 24,
+        "threshold": 1
+      },
+      {
+        "sheet": 3,
+        "source": "职业卡3.png",
+        "detectedMainSprites": 24,
+        "threshold": 1
+      },
+      {
+        "sheet": 4,
+        "source": "职业卡4.png",
+        "detectedMainSprites": 24,
+        "threshold": 64
+      }
+    ]
+  },
+  "frames": {
+    "01-男仆.png": {
+      "file": "01-男仆.png",
+      "cardName": "男仆",
+      "sourceSheet": "职业卡1.png",
+      "sourceVisualIndex": 1,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 28,
+        "y": 24,
+        "w": 166,
+        "h": 207
+      },
+      "tightFrame": {
+        "x": 36,
+        "y": 32,
+        "w": 150,
+        "h": 191
+      },
+      "offset": {
+        "x": 28,
+        "y": 24
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "02-修缮师.png": {
+      "file": "02-修缮师.png",
+      "cardName": "修缮师",
+      "sourceSheet": "职业卡1.png",
+      "sourceVisualIndex": 2,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 216,
+        "y": 23,
+        "w": 151,
+        "h": 208
+      },
+      "tightFrame": {
+        "x": 224,
+        "y": 31,
+        "w": 135,
+        "h": 192
+      },
+      "offset": {
+        "x": 216,
+        "y": 23
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "03-泥屋建筑师.png": {
+      "file": "03-泥屋建筑师.png",
+      "cardName": "泥屋建筑师",
+      "sourceSheet": "职业卡1.png",
+      "sourceVisualIndex": 3,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 378,
+        "y": 22,
+        "w": 163,
+        "h": 207
+      },
+      "tightFrame": {
+        "x": 386,
+        "y": 30,
+        "w": 147,
+        "h": 191
+      },
+      "offset": {
+        "x": 378,
+        "y": 22
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "04-无子者.png": {
+      "file": "04-无子者.png",
+      "cardName": "无子者",
+      "sourceSheet": "职业卡1.png",
+      "sourceVisualIndex": 4,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 551,
+        "y": 53,
+        "w": 146,
+        "h": 172
+      },
+      "tightFrame": {
+        "x": 559,
+        "y": 61,
+        "w": 130,
+        "h": 156
+      },
+      "offset": {
+        "x": 551,
+        "y": 53
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "05-牧师.png": {
+      "file": "05-牧师.png",
+      "cardName": "牧师",
+      "sourceSheet": "职业卡1.png",
+      "sourceVisualIndex": 5,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 684,
+        "y": 19,
+        "w": 146,
+        "h": 204
+      },
+      "tightFrame": {
+        "x": 692,
+        "y": 27,
+        "w": 130,
+        "h": 188
+      },
+      "offset": {
+        "x": 684,
+        "y": 19
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "06-驯兽师.png": {
+      "file": "06-驯兽师.png",
+      "cardName": "驯兽师",
+      "sourceSheet": "职业卡1.png",
+      "sourceVisualIndex": 6,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 829,
+        "y": 37,
+        "w": 182,
+        "h": 183
+      },
+      "tightFrame": {
+        "x": 837,
+        "y": 45,
+        "w": 166,
+        "h": 167
+      },
+      "offset": {
+        "x": 829,
+        "y": 37
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "07-树篱管理员.png": {
+      "file": "07-树篱管理员.png",
+      "cardName": "树篱管理员",
+      "sourceSheet": "职业卡1.png",
+      "sourceVisualIndex": 7,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 0,
+        "y": 254,
+        "w": 177,
+        "h": 209
+      },
+      "tightFrame": {
+        "x": 2,
+        "y": 262,
+        "w": 167,
+        "h": 193
+      },
+      "offset": {
+        "x": 0,
+        "y": 254
+      },
+      "contentOffset": {
+        "x": 2,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "08-犁夫.png": {
+      "file": "08-犁夫.png",
+      "cardName": "犁夫",
+      "sourceSheet": "职业卡1.png",
+      "sourceVisualIndex": 8,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 166,
+        "y": 250,
+        "w": 169,
+        "h": 206
+      },
+      "tightFrame": {
+        "x": 174,
+        "y": 258,
+        "w": 153,
+        "h": 190
+      },
+      "offset": {
+        "x": 166,
+        "y": 250
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "09-养父母.png": {
+      "file": "09-养父母.png",
+      "cardName": "养父母",
+      "sourceSheet": "职业卡1.png",
+      "sourceVisualIndex": 9,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 329,
+        "y": 252,
+        "w": 173,
+        "h": 197
+      },
+      "tightFrame": {
+        "x": 337,
+        "y": 260,
+        "w": 157,
+        "h": 181
+      },
+      "offset": {
+        "x": 329,
+        "y": 252
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "10-马厩建筑师.png": {
+      "file": "10-马厩建筑师.png",
+      "cardName": "马厩建筑师",
+      "sourceSheet": "职业卡1.png",
+      "sourceVisualIndex": 10,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 492,
+        "y": 246,
+        "w": 181,
+        "h": 208
+      },
+      "tightFrame": {
+        "x": 500,
+        "y": 254,
+        "w": 165,
+        "h": 192
+      },
+      "offset": {
+        "x": 492,
+        "y": 246
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "attachedProps": [
+        [
+          519,
+          441,
+          592,
+          446
+        ]
+      ]
+    },
+    "11-杂货商.png": {
+      "file": "11-杂货商.png",
+      "cardName": "杂货商",
+      "sourceSheet": "11杂货商.png",
+      "sourceVisualIndex": 11,
+      "sourceSize": {
+        "w": 163,
+        "h": 175
+      },
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 163,
+        "h": 175
+      },
+      "tightFrame": {
+        "x": 0,
+        "y": 4,
+        "w": 159,
+        "h": 163
+      },
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "contentOffset": {
+        "x": 0,
+        "y": 4
+      },
+      "rotated": false,
+      "trimmed": true,
+      "supplemental": true
+    },
+    "12-采蘑菇者.png": {
+      "file": "12-采蘑菇者.png",
+      "cardName": "采蘑菇者",
+      "sourceSheet": "职业卡1.png",
+      "sourceVisualIndex": 12,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 676,
+        "y": 256,
+        "w": 154,
+        "h": 196
+      },
+      "tightFrame": {
+        "x": 684,
+        "y": 264,
+        "w": 138,
+        "h": 180
+      },
+      "offset": {
+        "x": 676,
+        "y": 256
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "13-抹灰工.png": {
+      "file": "13-抹灰工.png",
+      "cardName": "抹灰工",
+      "sourceSheet": "职业卡1.png",
+      "sourceVisualIndex": 13,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 851,
+        "y": 242,
+        "w": 173,
+        "h": 211
+      },
+      "tightFrame": {
+        "x": 859,
+        "y": 250,
+        "w": 165,
+        "h": 195
+      },
+      "offset": {
+        "x": 851,
+        "y": 242
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "14-砌墙工.png": {
+      "file": "14-砌墙工.png",
+      "cardName": "砌墙工",
+      "sourceSheet": "职业卡1.png",
+      "sourceVisualIndex": 14,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 0,
+        "y": 481,
+        "w": 146,
+        "h": 206
+      },
+      "tightFrame": {
+        "x": 3,
+        "y": 489,
+        "w": 135,
+        "h": 190
+      },
+      "offset": {
+        "x": 0,
+        "y": 481
+      },
+      "contentOffset": {
+        "x": 3,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "15-镰刀工.png": {
+      "file": "15-镰刀工.png",
+      "cardName": "镰刀工",
+      "sourceSheet": "职业卡1.png",
+      "sourceVisualIndex": 15,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 170,
+        "y": 483,
+        "w": 184,
+        "h": 203
+      },
+      "tightFrame": {
+        "x": 178,
+        "y": 491,
+        "w": 168,
+        "h": 187
+      },
+      "offset": {
+        "x": 170,
+        "y": 483
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "16-季节工.png": {
+      "file": "16-季节工.png",
+      "cardName": "季节工",
+      "sourceSheet": "职业卡1.png",
+      "sourceVisualIndex": 16,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 349,
+        "y": 481,
+        "w": 137,
+        "h": 209
+      },
+      "tightFrame": {
+        "x": 357,
+        "y": 489,
+        "w": 121,
+        "h": 193
+      },
+      "offset": {
+        "x": 349,
+        "y": 481
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "17-伐木工.png": {
+      "file": "17-伐木工.png",
+      "cardName": "伐木工",
+      "sourceSheet": "职业卡1.png",
+      "sourceVisualIndex": 17,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 496,
+        "y": 502,
+        "w": 156,
+        "h": 182
+      },
+      "tightFrame": {
+        "x": 504,
+        "y": 510,
+        "w": 140,
+        "h": 166
+      },
+      "offset": {
+        "x": 496,
+        "y": 502
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "18-柴火收集者.png": {
+      "file": "18-柴火收集者.png",
+      "cardName": "柴火收集者",
+      "sourceSheet": "职业卡1.png",
+      "sourceVisualIndex": 18,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 669,
+        "y": 483,
+        "w": 165,
+        "h": 206
+      },
+      "tightFrame": {
+        "x": 677,
+        "y": 491,
+        "w": 149,
+        "h": 190
+      },
+      "offset": {
+        "x": 669,
+        "y": 483
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "19-框架建筑师.png": {
+      "file": "19-框架建筑师.png",
+      "cardName": "框架建筑师",
+      "sourceSheet": "职业卡1.png",
+      "sourceVisualIndex": 19,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 829,
+        "y": 486,
+        "w": 174,
+        "h": 206
+      },
+      "tightFrame": {
+        "x": 837,
+        "y": 494,
+        "w": 158,
+        "h": 190
+      },
+      "offset": {
+        "x": 829,
+        "y": 486
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "20-吹牛者.png": {
+      "file": "20-吹牛者.png",
+      "cardName": "吹牛者",
+      "sourceSheet": "职业卡1.png",
+      "sourceVisualIndex": 20,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 18,
+        "y": 710,
+        "w": 177,
+        "h": 220
+      },
+      "tightFrame": {
+        "x": 26,
+        "y": 718,
+        "w": 161,
+        "h": 204
+      },
+      "offset": {
+        "x": 18,
+        "y": 710
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "21-鱼叉手.png": {
+      "file": "21-鱼叉手.png",
+      "cardName": "鱼叉手",
+      "sourceSheet": "职业卡1.png",
+      "sourceVisualIndex": 21,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 221,
+        "y": 712,
+        "w": 170,
+        "h": 212
+      },
+      "tightFrame": {
+        "x": 229,
+        "y": 720,
+        "w": 154,
+        "h": 196
+      },
+      "offset": {
+        "x": 221,
+        "y": 712
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "22-石匠.png": {
+      "file": "22-石匠.png",
+      "cardName": "石匠",
+      "sourceSheet": "职业卡1.png",
+      "sourceVisualIndex": 22,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 410,
+        "y": 701,
+        "w": 195,
+        "h": 218
+      },
+      "tightFrame": {
+        "x": 418,
+        "y": 709,
+        "w": 179,
+        "h": 202
+      },
+      "offset": {
+        "x": 410,
+        "y": 701
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "23-魔术师.png": {
+      "file": "23-魔术师.png",
+      "cardName": "魔术师",
+      "sourceSheet": "职业卡1.png",
+      "sourceVisualIndex": 23,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 606,
+        "y": 695,
+        "w": 177,
+        "h": 218
+      },
+      "tightFrame": {
+        "x": 614,
+        "y": 703,
+        "w": 161,
+        "h": 202
+      },
+      "offset": {
+        "x": 606,
+        "y": 695
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "24-养猪人.png": {
+      "file": "24-养猪人.png",
+      "cardName": "养猪人",
+      "sourceSheet": "职业卡1.png",
+      "sourceVisualIndex": 24,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 816,
+        "y": 696,
+        "w": 200,
+        "h": 225
+      },
+      "tightFrame": {
+        "x": 824,
+        "y": 704,
+        "w": 184,
+        "h": 209
+      },
+      "offset": {
+        "x": 816,
+        "y": 696
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "25-小屋农夫.png": {
+      "file": "25-小屋农夫.png",
+      "cardName": "小屋农夫",
+      "sourceSheet": "职业卡2.png",
+      "sourceVisualIndex": 1,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1536
+      },
+      "frame": {
+        "x": 5,
+        "y": 28,
+        "w": 237,
+        "h": 272
+      },
+      "tightFrame": {
+        "x": 13,
+        "y": 36,
+        "w": 221,
+        "h": 256
+      },
+      "offset": {
+        "x": 5,
+        "y": 28
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "26-马夫.png": {
+      "file": "26-马夫.png",
+      "cardName": "马夫",
+      "sourceSheet": "职业卡2.png",
+      "sourceVisualIndex": 2,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1536
+      },
+      "frame": {
+        "x": 231,
+        "y": 24,
+        "w": 189,
+        "h": 258
+      },
+      "tightFrame": {
+        "x": 239,
+        "y": 32,
+        "w": 173,
+        "h": 242
+      },
+      "offset": {
+        "x": 231,
+        "y": 24
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "27-助耕者.png": {
+      "file": "27-助耕者.png",
+      "cardName": "助耕者",
+      "sourceSheet": "职业卡2.png",
+      "sourceVisualIndex": 3,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1536
+      },
+      "frame": {
+        "x": 416,
+        "y": 29,
+        "w": 170,
+        "h": 252
+      },
+      "tightFrame": {
+        "x": 424,
+        "y": 37,
+        "w": 154,
+        "h": 236
+      },
+      "offset": {
+        "x": 416,
+        "y": 29
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "28-砖瓦大师.png": {
+      "file": "28-砖瓦大师.png",
+      "cardName": "砖瓦大师",
+      "sourceSheet": "职业卡2.png",
+      "sourceVisualIndex": 4,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1536
+      },
+      "frame": {
+        "x": 577,
+        "y": 28,
+        "w": 220,
+        "h": 254
+      },
+      "tightFrame": {
+        "x": 585,
+        "y": 36,
+        "w": 204,
+        "h": 238
+      },
+      "offset": {
+        "x": 577,
+        "y": 28
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "29-学者.png": {
+      "file": "29-学者.png",
+      "cardName": "学者",
+      "sourceSheet": "职业卡2.png",
+      "sourceVisualIndex": 5,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1536
+      },
+      "frame": {
+        "x": 803,
+        "y": 53,
+        "w": 173,
+        "h": 192
+      },
+      "tightFrame": {
+        "x": 811,
+        "y": 61,
+        "w": 157,
+        "h": 176
+      },
+      "offset": {
+        "x": 803,
+        "y": 53
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "30-有机农夫.png": {
+      "file": "30-有机农夫.png",
+      "cardName": "有机农夫",
+      "sourceSheet": "职业卡2.png",
+      "sourceVisualIndex": 6,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1536
+      },
+      "frame": {
+        "x": 5,
+        "y": 289,
+        "w": 189,
+        "h": 251
+      },
+      "tightFrame": {
+        "x": 13,
+        "y": 297,
+        "w": 173,
+        "h": 235
+      },
+      "offset": {
+        "x": 5,
+        "y": 289
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "31-家庭教师.png": {
+      "file": "31-家庭教师.png",
+      "cardName": "家庭教师",
+      "sourceSheet": "职业卡2.png",
+      "sourceVisualIndex": 7,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1536
+      },
+      "frame": {
+        "x": 254,
+        "y": 292,
+        "w": 191,
+        "h": 261
+      },
+      "tightFrame": {
+        "x": 262,
+        "y": 300,
+        "w": 175,
+        "h": 245
+      },
+      "offset": {
+        "x": 254,
+        "y": 292
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "32-顾问.png": {
+      "file": "32-顾问.png",
+      "cardName": "顾问",
+      "sourceSheet": "职业卡2.png",
+      "sourceVisualIndex": 8,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1536
+      },
+      "frame": {
+        "x": 445,
+        "y": 293,
+        "w": 182,
+        "h": 259
+      },
+      "tightFrame": {
+        "x": 453,
+        "y": 301,
+        "w": 166,
+        "h": 243
+      },
+      "offset": {
+        "x": 445,
+        "y": 293
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "33-赶羊人.png": {
+      "file": "33-赶羊人.png",
+      "cardName": "赶羊人",
+      "sourceSheet": "职业卡2.png",
+      "sourceVisualIndex": 9,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1536
+      },
+      "frame": {
+        "x": 634,
+        "y": 292,
+        "w": 169,
+        "h": 260
+      },
+      "tightFrame": {
+        "x": 642,
+        "y": 300,
+        "w": 153,
+        "h": 244
+      },
+      "offset": {
+        "x": 634,
+        "y": 292
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "34-烤炉童工.png": {
+      "file": "34-烤炉童工.png",
+      "cardName": "烤炉童工",
+      "sourceSheet": "职业卡2.png",
+      "sourceVisualIndex": 10,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1536
+      },
+      "frame": {
+        "x": 800,
+        "y": 292,
+        "w": 180,
+        "h": 260
+      },
+      "tightFrame": {
+        "x": 808,
+        "y": 300,
+        "w": 164,
+        "h": 244
+      },
+      "offset": {
+        "x": 800,
+        "y": 292
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "35-造纸人.png": {
+      "file": "35-造纸人.png",
+      "cardName": "造纸人",
+      "sourceSheet": "职业卡2.png",
+      "sourceVisualIndex": 11,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1536
+      },
+      "frame": {
+        "x": 106,
+        "y": 532,
+        "w": 197,
+        "h": 263
+      },
+      "tightFrame": {
+        "x": 114,
+        "y": 540,
+        "w": 181,
+        "h": 247
+      },
+      "offset": {
+        "x": 106,
+        "y": 532
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "36-小农.png": {
+      "file": "36-小农.png",
+      "cardName": "小农",
+      "sourceSheet": "职业卡2.png",
+      "sourceVisualIndex": 12,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1536
+      },
+      "frame": {
+        "x": 800,
+        "y": 558,
+        "w": 163,
+        "h": 191
+      },
+      "tightFrame": {
+        "x": 808,
+        "y": 566,
+        "w": 147,
+        "h": 175
+      },
+      "offset": {
+        "x": 800,
+        "y": 558
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "37-地质学家.png": {
+      "file": "37-地质学家.png",
+      "cardName": "地质学家",
+      "sourceSheet": "职业卡2.png",
+      "sourceVisualIndex": 13,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1536
+      },
+      "frame": {
+        "x": 14,
+        "y": 771,
+        "w": 192,
+        "h": 259
+      },
+      "tightFrame": {
+        "x": 22,
+        "y": 779,
+        "w": 176,
+        "h": 243
+      },
+      "offset": {
+        "x": 14,
+        "y": 771
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "38-压顶工.png": {
+      "file": "38-压顶工.png",
+      "cardName": "压顶工",
+      "sourceSheet": "职业卡2.png",
+      "sourceVisualIndex": 14,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1536
+      },
+      "frame": {
+        "x": 213,
+        "y": 769,
+        "w": 189,
+        "h": 264
+      },
+      "tightFrame": {
+        "x": 221,
+        "y": 777,
+        "w": 173,
+        "h": 248
+      },
+      "offset": {
+        "x": 213,
+        "y": 769
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "39-木匠.png": {
+      "file": "39-木匠.png",
+      "cardName": "木匠",
+      "sourceSheet": "职业卡2.png",
+      "sourceVisualIndex": 15,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1536
+      },
+      "frame": {
+        "x": 393,
+        "y": 772,
+        "w": 188,
+        "h": 260
+      },
+      "tightFrame": {
+        "x": 401,
+        "y": 780,
+        "w": 172,
+        "h": 244
+      },
+      "offset": {
+        "x": 393,
+        "y": 772
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "40-房屋管理员.png": {
+      "file": "40-房屋管理员.png",
+      "cardName": "房屋管理员",
+      "sourceSheet": "职业卡2.png",
+      "sourceVisualIndex": 16,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1536
+      },
+      "frame": {
+        "x": 579,
+        "y": 767,
+        "w": 178,
+        "h": 265
+      },
+      "tightFrame": {
+        "x": 587,
+        "y": 775,
+        "w": 162,
+        "h": 249
+      },
+      "offset": {
+        "x": 579,
+        "y": 767
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "41-菜贩.png": {
+      "file": "41-菜贩.png",
+      "cardName": "菜贩",
+      "sourceSheet": "职业卡2.png",
+      "sourceVisualIndex": 17,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1536
+      },
+      "frame": {
+        "x": 764,
+        "y": 774,
+        "w": 207,
+        "h": 257
+      },
+      "tightFrame": {
+        "x": 772,
+        "y": 782,
+        "w": 191,
+        "h": 241
+      },
+      "offset": {
+        "x": 764,
+        "y": 774
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "42-柴枝收集者.png": {
+      "file": "42-柴枝收集者.png",
+      "cardName": "柴枝收集者",
+      "sourceSheet": "职业卡2.png",
+      "sourceVisualIndex": 18,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1536
+      },
+      "frame": {
+        "x": 0,
+        "y": 1053,
+        "w": 182,
+        "h": 257
+      },
+      "tightFrame": {
+        "x": 3,
+        "y": 1061,
+        "w": 171,
+        "h": 241
+      },
+      "offset": {
+        "x": 0,
+        "y": 1053
+      },
+      "contentOffset": {
+        "x": 3,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "43-仓库管理员.png": {
+      "file": "43-仓库管理员.png",
+      "cardName": "仓库管理员",
+      "sourceSheet": "职业卡2.png",
+      "sourceVisualIndex": 19,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1536
+      },
+      "frame": {
+        "x": 185,
+        "y": 1042,
+        "w": 183,
+        "h": 259
+      },
+      "tightFrame": {
+        "x": 193,
+        "y": 1050,
+        "w": 167,
+        "h": 243
+      },
+      "offset": {
+        "x": 185,
+        "y": 1042
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "44-乡村牧师.png": {
+      "file": "44-乡村牧师.png",
+      "cardName": "乡村牧师",
+      "sourceSheet": "职业卡2.png",
+      "sourceVisualIndex": 20,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1536
+      },
+      "frame": {
+        "x": 364,
+        "y": 1039,
+        "w": 201,
+        "h": 258
+      },
+      "tightFrame": {
+        "x": 372,
+        "y": 1047,
+        "w": 185,
+        "h": 242
+      },
+      "offset": {
+        "x": 364,
+        "y": 1039
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "45-羊语者.png": {
+      "file": "45-羊语者.png",
+      "cardName": "羊语者",
+      "sourceSheet": "职业卡2.png",
+      "sourceVisualIndex": 21,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1536
+      },
+      "frame": {
+        "x": 569,
+        "y": 1042,
+        "w": 195,
+        "h": 251
+      },
+      "tightFrame": {
+        "x": 577,
+        "y": 1050,
+        "w": 179,
+        "h": 235
+      },
+      "offset": {
+        "x": 569,
+        "y": 1042
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "46-喂牛人.png": {
+      "file": "46-喂牛人.png",
+      "cardName": "喂牛人",
+      "sourceSheet": "职业卡2.png",
+      "sourceVisualIndex": 22,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1536
+      },
+      "frame": {
+        "x": 387,
+        "y": 1336,
+        "w": 176,
+        "h": 182
+      },
+      "tightFrame": {
+        "x": 395,
+        "y": 1344,
+        "w": 160,
+        "h": 166
+      },
+      "offset": {
+        "x": 387,
+        "y": 1336
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "47-牲畜贩.png": {
+      "file": "47-牲畜贩.png",
+      "cardName": "牲畜贩",
+      "sourceSheet": "职业卡2.png",
+      "sourceVisualIndex": 23,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1536
+      },
+      "frame": {
+        "x": 611,
+        "y": 1286,
+        "w": 207,
+        "h": 250
+      },
+      "tightFrame": {
+        "x": 619,
+        "y": 1294,
+        "w": 191,
+        "h": 236
+      },
+      "offset": {
+        "x": 611,
+        "y": 1286
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "48-鲁特琴手.png": {
+      "file": "48-鲁特琴手.png",
+      "cardName": "鲁特琴手",
+      "sourceSheet": "职业卡2.png",
+      "sourceVisualIndex": 24,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1536
+      },
+      "frame": {
+        "x": 808,
+        "y": 1286,
+        "w": 196,
+        "h": 250
+      },
+      "tightFrame": {
+        "x": 816,
+        "y": 1294,
+        "w": 180,
+        "h": 235
+      },
+      "offset": {
+        "x": 808,
+        "y": 1286
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "49-代看者.png": {
+      "file": "49-代看者.png",
+      "cardName": "代看者",
+      "sourceSheet": "职业卡3.png",
+      "sourceVisualIndex": 1,
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 25,
+        "y": 24,
+        "w": 222,
+        "h": 224
+      },
+      "tightFrame": {
+        "x": 33,
+        "y": 32,
+        "w": 206,
+        "h": 208
+      },
+      "offset": {
+        "x": 25,
+        "y": 24
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "50-牧场看守.png": {
+      "file": "50-牧场看守.png",
+      "cardName": "牧场看守",
+      "sourceSheet": "职业卡3.png",
+      "sourceVisualIndex": 2,
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 264,
+        "y": 22,
+        "w": 210,
+        "h": 223
+      },
+      "tightFrame": {
+        "x": 272,
+        "y": 30,
+        "w": 194,
+        "h": 207
+      },
+      "offset": {
+        "x": 264,
+        "y": 22
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "51-助手.png": {
+      "file": "51-助手.png",
+      "cardName": "助手",
+      "sourceSheet": "职业卡3.png",
+      "sourceVisualIndex": 3,
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 493,
+        "y": 23,
+        "w": 183,
+        "h": 224
+      },
+      "tightFrame": {
+        "x": 501,
+        "y": 31,
+        "w": 167,
+        "h": 208
+      },
+      "offset": {
+        "x": 493,
+        "y": 23
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "52-船漆工.png": {
+      "file": "52-船漆工.png",
+      "cardName": "船漆工",
+      "sourceSheet": "职业卡3.png",
+      "sourceVisualIndex": 4,
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 703,
+        "y": 21,
+        "w": 215,
+        "h": 224
+      },
+      "tightFrame": {
+        "x": 711,
+        "y": 29,
+        "w": 199,
+        "h": 208
+      },
+      "offset": {
+        "x": 703,
+        "y": 21
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "53-黏土贼.png": {
+      "file": "53-黏土贼.png",
+      "cardName": "黏土贼",
+      "sourceSheet": "职业卡3.png",
+      "sourceVisualIndex": 5,
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 933,
+        "y": 23,
+        "w": 179,
+        "h": 225
+      },
+      "tightFrame": {
+        "x": 941,
+        "y": 31,
+        "w": 163,
+        "h": 209
+      },
+      "offset": {
+        "x": 933,
+        "y": 23
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "54-霍拉大师.png": {
+      "file": "54-霍拉大师.png",
+      "cardName": "霍拉大师",
+      "sourceSheet": "职业卡3.png",
+      "sourceVisualIndex": 6,
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 1136,
+        "y": 21,
+        "w": 185,
+        "h": 226
+      },
+      "tightFrame": {
+        "x": 1144,
+        "y": 29,
+        "w": 169,
+        "h": 210
+      },
+      "offset": {
+        "x": 1136,
+        "y": 21
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "55-洼地园丁.png": {
+      "file": "55-洼地园丁.png",
+      "cardName": "洼地园丁",
+      "sourceSheet": "职业卡3.png",
+      "sourceVisualIndex": 7,
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 25,
+        "y": 254,
+        "w": 244,
+        "h": 233
+      },
+      "tightFrame": {
+        "x": 33,
+        "y": 262,
+        "w": 228,
+        "h": 217
+      },
+      "offset": {
+        "x": 25,
+        "y": 254
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "56-车轮匠.png": {
+      "file": "56-车轮匠.png",
+      "cardName": "车轮匠",
+      "sourceSheet": "职业卡3.png",
+      "sourceVisualIndex": 8,
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 262,
+        "y": 254,
+        "w": 207,
+        "h": 231
+      },
+      "tightFrame": {
+        "x": 270,
+        "y": 262,
+        "w": 191,
+        "h": 215
+      },
+      "offset": {
+        "x": 262,
+        "y": 254
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "57-中间商.png": {
+      "file": "57-中间商.png",
+      "cardName": "中间商",
+      "sourceSheet": "职业卡3.png",
+      "sourceVisualIndex": 9,
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 520,
+        "y": 265,
+        "w": 165,
+        "h": 206
+      },
+      "tightFrame": {
+        "x": 528,
+        "y": 273,
+        "w": 149,
+        "h": 190
+      },
+      "offset": {
+        "x": 520,
+        "y": 265
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "58-木匠学徒.png": {
+      "file": "58-木匠学徒.png",
+      "cardName": "木匠学徒",
+      "sourceSheet": "职业卡3.png",
+      "sourceVisualIndex": 10,
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 716,
+        "y": 253,
+        "w": 187,
+        "h": 231
+      },
+      "tightFrame": {
+        "x": 724,
+        "y": 261,
+        "w": 171,
+        "h": 215
+      },
+      "offset": {
+        "x": 716,
+        "y": 253
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "59-山地牧羊人.png": {
+      "file": "59-山地牧羊人.png",
+      "cardName": "山地牧羊人",
+      "sourceSheet": "职业卡3.png",
+      "sourceVisualIndex": 11,
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 923,
+        "y": 256,
+        "w": 217,
+        "h": 229
+      },
+      "tightFrame": {
+        "x": 931,
+        "y": 264,
+        "w": 201,
+        "h": 213
+      },
+      "offset": {
+        "x": 923,
+        "y": 256
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "60-烙印师.png": {
+      "file": "60-烙印师.png",
+      "cardName": "烙印师",
+      "sourceSheet": "职业卡3.png",
+      "sourceVisualIndex": 12,
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 1150,
+        "y": 255,
+        "w": 187,
+        "h": 232
+      },
+      "tightFrame": {
+        "x": 1158,
+        "y": 263,
+        "w": 171,
+        "h": 216
+      },
+      "offset": {
+        "x": 1150,
+        "y": 255
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "61-牲畜寄养人.png": {
+      "file": "61-牲畜寄养人.png",
+      "cardName": "牲畜寄养人",
+      "sourceSheet": "职业卡3.png",
+      "sourceVisualIndex": 13,
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 30,
+        "y": 491,
+        "w": 231,
+        "h": 233
+      },
+      "tightFrame": {
+        "x": 38,
+        "y": 499,
+        "w": 215,
+        "h": 217
+      },
+      "offset": {
+        "x": 30,
+        "y": 491
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "62-畜栏建造者.png": {
+      "file": "62-畜栏建造者.png",
+      "cardName": "畜栏建造者",
+      "sourceSheet": "职业卡3.png",
+      "sourceVisualIndex": 14,
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 264,
+        "y": 493,
+        "w": 213,
+        "h": 231
+      },
+      "tightFrame": {
+        "x": 272,
+        "y": 501,
+        "w": 197,
+        "h": 215
+      },
+      "offset": {
+        "x": 264,
+        "y": 493
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "63-温室建造者.png": {
+      "file": "63-温室建造者.png",
+      "cardName": "温室建造者",
+      "sourceSheet": "职业卡3.png",
+      "sourceVisualIndex": 15,
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 514,
+        "y": 505,
+        "w": 171,
+        "h": 211
+      },
+      "tightFrame": {
+        "x": 522,
+        "y": 513,
+        "w": 155,
+        "h": 195
+      },
+      "offset": {
+        "x": 514,
+        "y": 505
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "64-牛照料者.png": {
+      "file": "64-牛照料者.png",
+      "cardName": "牛照料者",
+      "sourceSheet": "职业卡3.png",
+      "sourceVisualIndex": 16,
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 700,
+        "y": 500,
+        "w": 241,
+        "h": 224
+      },
+      "tightFrame": {
+        "x": 708,
+        "y": 508,
+        "w": 225,
+        "h": 208
+      },
+      "offset": {
+        "x": 700,
+        "y": 500
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "65-清扫工.png": {
+      "file": "65-清扫工.png",
+      "cardName": "清扫工",
+      "sourceSheet": "职业卡3.png",
+      "sourceVisualIndex": 17,
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 952,
+        "y": 491,
+        "w": 172,
+        "h": 235
+      },
+      "tightFrame": {
+        "x": 960,
+        "y": 499,
+        "w": 156,
+        "h": 219
+      },
+      "offset": {
+        "x": 952,
+        "y": 491
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "66-河岸园丁.png": {
+      "file": "66-河岸园丁.png",
+      "cardName": "河岸园丁",
+      "sourceSheet": "职业卡3.png",
+      "sourceVisualIndex": 18,
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 1137,
+        "y": 490,
+        "w": 179,
+        "h": 234
+      },
+      "tightFrame": {
+        "x": 1145,
+        "y": 498,
+        "w": 163,
+        "h": 218
+      },
+      "offset": {
+        "x": 1137,
+        "y": 490
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "67-田地监工.png": {
+      "file": "67-田地监工.png",
+      "cardName": "田地监工",
+      "sourceSheet": "职业卡3.png",
+      "sourceVisualIndex": 19,
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 1330,
+        "y": 491,
+        "w": 178,
+        "h": 236
+      },
+      "tightFrame": {
+        "x": 1338,
+        "y": 499,
+        "w": 162,
+        "h": 220
+      },
+      "offset": {
+        "x": 1330,
+        "y": 491
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "68-村傻.png": {
+      "file": "68-村傻.png",
+      "cardName": "村傻",
+      "sourceSheet": "职业卡3.png",
+      "sourceVisualIndex": 20,
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 296,
+        "y": 730,
+        "w": 160,
+        "h": 236
+      },
+      "tightFrame": {
+        "x": 304,
+        "y": 738,
+        "w": 144,
+        "h": 220
+      },
+      "offset": {
+        "x": 296,
+        "y": 730
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "69-抓石工.png": {
+      "file": "69-抓石工.png",
+      "cardName": "抓石工",
+      "sourceSheet": "职业卡3.png",
+      "sourceVisualIndex": 21,
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 505,
+        "y": 730,
+        "w": 188,
+        "h": 235
+      },
+      "tightFrame": {
+        "x": 513,
+        "y": 738,
+        "w": 172,
+        "h": 219
+      },
+      "offset": {
+        "x": 505,
+        "y": 730
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "70-跟随者.png": {
+      "file": "70-跟随者.png",
+      "cardName": "跟随者",
+      "sourceSheet": "职业卡3.png",
+      "sourceVisualIndex": 22,
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 718,
+        "y": 733,
+        "w": 181,
+        "h": 234
+      },
+      "tightFrame": {
+        "x": 726,
+        "y": 741,
+        "w": 165,
+        "h": 218
+      },
+      "offset": {
+        "x": 718,
+        "y": 733
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "71-野猪猎人.png": {
+      "file": "71-野猪猎人.png",
+      "cardName": "野猪猎人",
+      "sourceSheet": "职业卡3.png",
+      "sourceVisualIndex": 23,
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 1103,
+        "y": 750,
+        "w": 213,
+        "h": 218
+      },
+      "tightFrame": {
+        "x": 1111,
+        "y": 758,
+        "w": 197,
+        "h": 202
+      },
+      "offset": {
+        "x": 1103,
+        "y": 750
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "72-野味品尝师.png": {
+      "file": "72-野味品尝师.png",
+      "cardName": "野味品尝师",
+      "sourceSheet": "职业卡3.png",
+      "sourceVisualIndex": 24,
+      "sourceSize": {
+        "w": 1536,
+        "h": 1024
+      },
+      "frame": {
+        "x": 1325,
+        "y": 755,
+        "w": 201,
+        "h": 211
+      },
+      "tightFrame": {
+        "x": 1333,
+        "y": 763,
+        "w": 185,
+        "h": 195
+      },
+      "offset": {
+        "x": 1325,
+        "y": 755
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "73-快手石匠.png": {
+      "file": "73-快手石匠.png",
+      "cardName": "快手石匠",
+      "sourceSheet": "职业卡4.png",
+      "sourceVisualIndex": 1,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 5,
+        "y": 28,
+        "w": 186,
+        "h": 217
+      },
+      "tightFrame": {
+        "x": 13,
+        "y": 36,
+        "w": 170,
+        "h": 201
+      },
+      "offset": {
+        "x": 5,
+        "y": 28
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "74-业余围栏工.png": {
+      "file": "74-业余围栏工.png",
+      "cardName": "业余围栏工",
+      "sourceSheet": "职业卡4.png",
+      "sourceVisualIndex": 2,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 169,
+        "y": 63,
+        "w": 185,
+        "h": 183
+      },
+      "tightFrame": {
+        "x": 177,
+        "y": 71,
+        "w": 169,
+        "h": 167
+      },
+      "offset": {
+        "x": 169,
+        "y": 63
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "75-年轻艺人.png": {
+      "file": "75-年轻艺人.png",
+      "cardName": "年轻艺人",
+      "sourceSheet": "职业卡4.png",
+      "sourceVisualIndex": 3,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 370,
+        "y": 24,
+        "w": 182,
+        "h": 219
+      },
+      "tightFrame": {
+        "x": 378,
+        "y": 32,
+        "w": 166,
+        "h": 203
+      },
+      "offset": {
+        "x": 370,
+        "y": 24
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true,
+      "attachedProps": [
+        [
+          404,
+          44,
+          426,
+          67
+        ],
+        [
+          522,
+          65,
+          544,
+          88
+        ],
+        [
+          383,
+          78,
+          405,
+          99
+        ],
+        [
+          514,
+          105,
+          536,
+          127
+        ]
+      ]
+    },
+    "76-田地计数员.png": {
+      "file": "76-田地计数员.png",
+      "cardName": "田地计数员",
+      "sourceSheet": "职业卡4.png",
+      "sourceVisualIndex": 4,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 548,
+        "y": 23,
+        "w": 156,
+        "h": 222
+      },
+      "tightFrame": {
+        "x": 556,
+        "y": 31,
+        "w": 140,
+        "h": 206
+      },
+      "offset": {
+        "x": 548,
+        "y": 23
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "77-顶外工.png": {
+      "file": "77-顶外工.png",
+      "cardName": "顶外工",
+      "sourceSheet": "职业卡4.png",
+      "sourceVisualIndex": 5,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 701,
+        "y": 25,
+        "w": 168,
+        "h": 218
+      },
+      "tightFrame": {
+        "x": 709,
+        "y": 33,
+        "w": 152,
+        "h": 202
+      },
+      "offset": {
+        "x": 701,
+        "y": 25
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "78-石头保管人.png": {
+      "file": "78-石头保管人.png",
+      "cardName": "石头保管人",
+      "sourceSheet": "职业卡4.png",
+      "sourceVisualIndex": 6,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 870,
+        "y": 31,
+        "w": 149,
+        "h": 214
+      },
+      "tightFrame": {
+        "x": 878,
+        "y": 39,
+        "w": 133,
+        "h": 198
+      },
+      "offset": {
+        "x": 870,
+        "y": 31
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "79-乡村教师.png": {
+      "file": "79-乡村教师.png",
+      "cardName": "乡村教师",
+      "sourceSheet": "职业卡4.png",
+      "sourceVisualIndex": 7,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 11,
+        "y": 258,
+        "w": 168,
+        "h": 222
+      },
+      "tightFrame": {
+        "x": 19,
+        "y": 266,
+        "w": 152,
+        "h": 206
+      },
+      "offset": {
+        "x": 11,
+        "y": 258
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "80-净田人.png": {
+      "file": "80-净田人.png",
+      "cardName": "净田人",
+      "sourceSheet": "职业卡4.png",
+      "sourceVisualIndex": 8,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 170,
+        "y": 256,
+        "w": 199,
+        "h": 223
+      },
+      "tightFrame": {
+        "x": 178,
+        "y": 264,
+        "w": 183,
+        "h": 207
+      },
+      "offset": {
+        "x": 170,
+        "y": 256
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "81-山地徒步者.png": {
+      "file": "81-山地徒步者.png",
+      "cardName": "山地徒步者",
+      "sourceSheet": "职业卡4.png",
+      "sourceVisualIndex": 9,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 363,
+        "y": 255,
+        "w": 171,
+        "h": 223
+      },
+      "tightFrame": {
+        "x": 371,
+        "y": 263,
+        "w": 155,
+        "h": 207
+      },
+      "offset": {
+        "x": 363,
+        "y": 255
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "82-驻地牧师.png": {
+      "file": "82-驻地牧师.png",
+      "cardName": "驻地牧师",
+      "sourceSheet": "职业卡4.png",
+      "sourceVisualIndex": 10,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 544,
+        "y": 257,
+        "w": 152,
+        "h": 225
+      },
+      "tightFrame": {
+        "x": 552,
+        "y": 265,
+        "w": 136,
+        "h": 209
+      },
+      "offset": {
+        "x": 544,
+        "y": 257
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "83-牛群先锋.png": {
+      "file": "83-牛群先锋.png",
+      "cardName": "牛群先锋",
+      "sourceSheet": "职业卡4.png",
+      "sourceVisualIndex": 11,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 686,
+        "y": 256,
+        "w": 178,
+        "h": 225
+      },
+      "tightFrame": {
+        "x": 694,
+        "y": 264,
+        "w": 162,
+        "h": 209
+      },
+      "offset": {
+        "x": 686,
+        "y": 256
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "84-陷阱猎人.png": {
+      "file": "84-陷阱猎人.png",
+      "cardName": "陷阱猎人",
+      "sourceSheet": "职业卡4.png",
+      "sourceVisualIndex": 12,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 846,
+        "y": 270,
+        "w": 178,
+        "h": 213
+      },
+      "tightFrame": {
+        "x": 854,
+        "y": 278,
+        "w": 169,
+        "h": 197
+      },
+      "offset": {
+        "x": 846,
+        "y": 270
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "85-犁匠.png": {
+      "file": "85-犁匠.png",
+      "cardName": "犁匠",
+      "sourceSheet": "职业卡4.png",
+      "sourceVisualIndex": 13,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 8,
+        "y": 498,
+        "w": 183,
+        "h": 224
+      },
+      "tightFrame": {
+        "x": 16,
+        "y": 506,
+        "w": 167,
+        "h": 208
+      },
+      "offset": {
+        "x": 8,
+        "y": 498
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "86-羊圈建造者.png": {
+      "file": "86-羊圈建造者.png",
+      "cardName": "羊圈建造者",
+      "sourceSheet": "职业卡4.png",
+      "sourceVisualIndex": 14,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 170,
+        "y": 492,
+        "w": 190,
+        "h": 226
+      },
+      "tightFrame": {
+        "x": 178,
+        "y": 500,
+        "w": 174,
+        "h": 210
+      },
+      "offset": {
+        "x": 170,
+        "y": 492
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "87-高级教师.png": {
+      "file": "87-高级教师.png",
+      "cardName": "高级教师",
+      "sourceSheet": "职业卡4.png",
+      "sourceVisualIndex": 15,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 372,
+        "y": 491,
+        "w": 148,
+        "h": 230
+      },
+      "tightFrame": {
+        "x": 380,
+        "y": 499,
+        "w": 132,
+        "h": 214
+      },
+      "offset": {
+        "x": 372,
+        "y": 491
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "88-鱼笼匠.png": {
+      "file": "88-鱼笼匠.png",
+      "cardName": "鱼笼匠",
+      "sourceSheet": "职业卡4.png",
+      "sourceVisualIndex": 16,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 513,
+        "y": 485,
+        "w": 175,
+        "h": 230
+      },
+      "tightFrame": {
+        "x": 521,
+        "y": 493,
+        "w": 159,
+        "h": 214
+      },
+      "offset": {
+        "x": 513,
+        "y": 485
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "89-镇书记.png": {
+      "file": "89-镇书记.png",
+      "cardName": "镇书记",
+      "sourceSheet": "职业卡4.png",
+      "sourceVisualIndex": 17,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 684,
+        "y": 492,
+        "w": 161,
+        "h": 229
+      },
+      "tightFrame": {
+        "x": 692,
+        "y": 500,
+        "w": 145,
+        "h": 213
+      },
+      "offset": {
+        "x": 684,
+        "y": 492
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "90-黄土园丁.png": {
+      "file": "90-黄土园丁.png",
+      "cardName": "黄土园丁",
+      "sourceSheet": "职业卡4.png",
+      "sourceVisualIndex": 18,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 852,
+        "y": 503,
+        "w": 172,
+        "h": 219
+      },
+      "tightFrame": {
+        "x": 860,
+        "y": 511,
+        "w": 159,
+        "h": 203
+      },
+      "offset": {
+        "x": 852,
+        "y": 503
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "91-乡下人.png": {
+      "file": "91-乡下人.png",
+      "cardName": "乡下人",
+      "sourceSheet": "职业卡4.png",
+      "sourceVisualIndex": 19,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 0,
+        "y": 733,
+        "w": 172,
+        "h": 228
+      },
+      "tightFrame": {
+        "x": 1,
+        "y": 741,
+        "w": 163,
+        "h": 212
+      },
+      "offset": {
+        "x": 0,
+        "y": 733
+      },
+      "contentOffset": {
+        "x": 1,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "92-劈木工.png": {
+      "file": "92-劈木工.png",
+      "cardName": "劈木工",
+      "sourceSheet": "职业卡4.png",
+      "sourceVisualIndex": 20,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 137,
+        "y": 775,
+        "w": 180,
+        "h": 176
+      },
+      "tightFrame": {
+        "x": 145,
+        "y": 783,
+        "w": 164,
+        "h": 160
+      },
+      "offset": {
+        "x": 137,
+        "y": 775
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "93-毕业生.png": {
+      "file": "93-毕业生.png",
+      "cardName": "毕业生",
+      "sourceSheet": "职业卡4.png",
+      "sourceVisualIndex": 21,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 304,
+        "y": 736,
+        "w": 158,
+        "h": 227
+      },
+      "tightFrame": {
+        "x": 312,
+        "y": 744,
+        "w": 142,
+        "h": 211
+      },
+      "offset": {
+        "x": 304,
+        "y": 736
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "94-代课教师.png": {
+      "file": "94-代课教师.png",
+      "cardName": "代课教师",
+      "sourceSheet": "职业卡4.png",
+      "sourceVisualIndex": 22,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 445,
+        "y": 734,
+        "w": 175,
+        "h": 232
+      },
+      "tightFrame": {
+        "x": 453,
+        "y": 742,
+        "w": 159,
+        "h": 216
+      },
+      "offset": {
+        "x": 445,
+        "y": 734
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "95-捕牛人.png": {
+      "file": "95-捕牛人.png",
+      "cardName": "捕牛人",
+      "sourceSheet": "职业卡4.png",
+      "sourceVisualIndex": 23,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 610,
+        "y": 737,
+        "w": 249,
+        "h": 228
+      },
+      "tightFrame": {
+        "x": 618,
+        "y": 745,
+        "w": 233,
+        "h": 212
+      },
+      "offset": {
+        "x": 610,
+        "y": 737
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    },
+    "96-兼职工.png": {
+      "file": "96-兼职工.png",
+      "cardName": "兼职工",
+      "sourceSheet": "职业卡4.png",
+      "sourceVisualIndex": 24,
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "frame": {
+        "x": 845,
+        "y": 736,
+        "w": 179,
+        "h": 226
+      },
+      "tightFrame": {
+        "x": 853,
+        "y": 744,
+        "w": 164,
+        "h": 210
+      },
+      "offset": {
+        "x": 845,
+        "y": 736
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false,
+      "trimmed": true
+    }
+  }
+}

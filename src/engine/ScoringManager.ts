@@ -1,4 +1,5 @@
 import { roomPoints, scoringRules } from "../config/scoringRules";
+import { calculateCardBonusPoints, countScoringCrops, countScoringFields } from "../shared/cardEffectUtils";
 import { calculateMajorImprovementBasePoints, calculateMajorImprovementBonusPoints } from "../shared/majorImprovementScoring";
 import type { GameState } from "../state/GameState";
 import type { PlayerState, ScoreBreakdown } from "../state/PlayerState";
@@ -7,7 +8,7 @@ export class ScoringManager {
   scoreGame(state: GameState): GameState {
     const players = state.players.map((player) => ({
       ...player,
-      score: this.calculateFinalScore(player),
+      score: this.calculateFinalScore(player, state.players),
     }));
     const bestTotal = Math.max(...players.map((player) => player.score?.total ?? 0));
     const tied = players.filter((player) => player.score?.total === bestTotal);
@@ -25,16 +26,17 @@ export class ScoringManager {
     };
   }
 
-  calculateFinalScore(player: PlayerState): ScoreBreakdown {
-    const fieldsCount = player.farm.cells.filter((cell) => cell.field).length;
+  calculateFinalScore(player: PlayerState, allPlayers: PlayerState[] = [player]): ScoreBreakdown {
+    const fieldsCount = countScoringFields(player);
     const pastureCount = player.farm.pastures.length;
-    const grainInFields = player.farm.cells.reduce((sum, cell) => sum + (cell.field?.crop === "grain" ? cell.field.count : 0), 0);
-    const vegetableInFields = player.farm.cells.reduce((sum, cell) => sum + (cell.field?.crop === "vegetable" ? cell.field.count : 0), 0);
+    const grainInFields = countScoringCrops(player, "grain");
+    const vegetableInFields = countScoringCrops(player, "vegetable");
     const roomCount = player.farm.cells.filter((cell) => cell.room).length;
     const fencedStables = player.farm.cells.filter((cell) => cell.stable && cell.pastureId).length;
     const emptySpaces = player.farm.cells.filter((cell) => !cell.room && !cell.field && !cell.pastureId && !cell.stable).length;
     const majorPoints = calculateMajorImprovementBasePoints(player);
     const bonusPoints = calculateMajorImprovementBonusPoints(player);
+    const cardPoints = calculateCardBonusPoints(player, allPlayers);
     const breakdown: Omit<ScoreBreakdown, "total"> = {
       fields: this.scoreRange("fields", fieldsCount),
       pastures: this.scoreRange("pastures", pastureCount),
@@ -47,11 +49,11 @@ export class ScoringManager {
       family: player.workers.length * 3,
       fencedStables: Math.min(fencedStables, 4),
       majorImprovements: majorPoints,
-      minorImprovements: 0,
-      occupations: 0,
+      minorImprovements: cardPoints.minor,
+      occupations: cardPoints.occupation,
       emptySpaces: -emptySpaces,
       beggingCards: player.beggingCards * -3,
-      bonusPoints,
+      bonusPoints: bonusPoints + cardPoints.bonus,
     };
 
     return {

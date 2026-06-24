@@ -1,5 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { majorImprovements, type MajorImprovementDefinition } from "../../../config/majorImprovements";
+import { minorImprovements } from "../../../config/minorImprovements";
+import { occupations } from "../../../config/occupations";
 import { calculateMajorImprovementScoreDetail } from "../../../shared/majorImprovementScoring";
 import type { AnimalCookInput, CookInput } from "../../../shared/types";
 import type { GameState } from "../../../state/GameState";
@@ -16,6 +18,7 @@ import victoryPointUrl from "../../assets/major-facilities/victory-point.png";
 import wellArtUrl from "../../assets/major-facilities/well.png";
 import { cookWithMajorImprovement } from "../../socket/clientSocket";
 import { cookValue } from "../animalCooking";
+import { PlayableCardFace } from "../Cards/PlayableCard";
 import { RESOURCE_ICONS, type ResourceIconKey } from "../VisualSystem/ResourceIcons";
 
 type Animal = AnimalCookInput["animal"];
@@ -46,6 +49,7 @@ interface MajorFacilitiesProps {
 
 export function MajorFacilities({ game, isOwnPlayer, player, roomId }: MajorFacilitiesProps) {
   const [marketOpen, setMarketOpen] = useState(false);
+  const [handOpen, setHandOpen] = useState(false);
   const [activeFacilityId, setActiveFacilityId] = useState<string | null>(null);
   const ownedCards = player ? majorImprovements.filter((card) => player.majorImprovements.includes(card.id)) : [];
   const marketSlots = createMajorFacilitySlots(game?.majorImprovements ?? []);
@@ -76,7 +80,15 @@ export function MajorFacilities({ game, isOwnPlayer, player, roomId }: MajorFaci
       ) : (
         <p className="muted">还没有大设施。</p>
       )}
+      <button className="hand-entry-button" disabled={!player} onClick={() => setHandOpen(true)}>
+        <RESOURCE_ICONS.wood size={26} />
+        <span>
+          手牌
+          <small>{player ? (isOwnPlayer ? `小设施 ${player.minorImprovementHand.length} / 职业 ${player.occupationHand.length}` : "手牌已隐藏") : "等待玩家"}</small>
+        </span>
+      </button>
       {marketOpen ? <MajorFacilityMarket cardStates={game?.majorImprovements ?? []} mode="view" onClose={() => setMarketOpen(false)} player={player} slots={marketSlots} /> : null}
+      {handOpen ? <PlayerHandOverlay isOwnPlayer={isOwnPlayer} onClose={() => setHandOpen(false)} player={player} /> : null}
       {activeFacility && player ? (
         <MajorFacilityUseOverlay
           card={activeFacility}
@@ -420,6 +432,51 @@ function IconGroup({ items }: { items: Array<{ type: string; count: number }> })
         );
       })}
     </span>
+  );
+}
+
+function PlayerHandOverlay({ isOwnPlayer, onClose, player }: { isOwnPlayer: boolean; onClose: () => void; player: PlayerState | null }) {
+  const minorHand = player ? player.minorImprovementHand.map((id) => minorImprovements.find((card) => card.id === id)).filter((card): card is (typeof minorImprovements)[number] => Boolean(card)) : [];
+  const occupationHand = player ? player.occupationHand.map((id) => occupations.find((card) => card.id === id)).filter((card): card is (typeof occupations)[number] => Boolean(card)) : [];
+
+  return (
+    <div className="modal-layer" role="dialog" aria-modal="true">
+      <section className="game-modal player-hand-modal">
+        <span className="game-modal__eyebrow">手牌</span>
+        <h2>{player?.name ?? "玩家"} 的卡牌</h2>
+        {!player ? <p className="muted">暂无玩家。</p> : null}
+        {player && !isOwnPlayer ? <p className="muted">其他玩家的手牌已隐藏；已打出的卡会显示在农场资源区下方。</p> : null}
+        {player && isOwnPlayer ? (
+          <div className="player-hand-sections">
+            <HandSection title="小设施手牌" emptyText="没有小设施手牌。">
+              {minorHand.map((card) => (
+                <PlayableCardFace key={card.id} card={card} kind="minor" footer={<span className="playable-card__status">手牌</span>} />
+              ))}
+            </HandSection>
+            <HandSection title="职业手牌" emptyText="没有职业手牌。">
+              {occupationHand.map((card) => (
+                <PlayableCardFace key={card.id} card={card} kind="occupation" footer={<span className="playable-card__status">手牌</span>} />
+              ))}
+            </HandSection>
+          </div>
+        ) : null}
+        <footer className="game-modal__actions">
+          <button className="secondary-button" onClick={onClose}>
+            关闭
+          </button>
+        </footer>
+      </section>
+    </div>
+  );
+}
+
+function HandSection({ children, emptyText, title }: { children: ReactNode; emptyText: string; title: string }) {
+  const items = Array.isArray(children) ? children.filter(Boolean) : children ? [children] : [];
+  return (
+    <section className="hand-section">
+      <h3>{title}</h3>
+      <div className="hand-card-grid">{items.length > 0 ? items : <p className="muted">{emptyText}</p>}</div>
+    </section>
   );
 }
 

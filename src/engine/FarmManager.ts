@@ -3,6 +3,7 @@ import type { ResourceKey } from "../config/baseActions";
 import type { CellPosition } from "../shared/types";
 import type { AnimalGroup, FarmAnimalType, FarmCell, FarmState, FenceEdge, FenceEdgeSide, FenceSegment, RoomMaterial } from "../state/FarmState";
 import type { PlayerState } from "../state/PlayerState";
+import { applyCardCostModifiers, cardCapacityBonus, getPlayerCardEffects, hasCardActionRestriction } from "../shared/cardEffectUtils";
 
 export class FarmManager {
   createInitialFarm(): FarmState {
@@ -179,10 +180,22 @@ export class FarmManager {
 
     const material = player.farm.roomMaterial;
     const mainResource: ResourceKey = material === "wood" ? "wood" : material === "clay" ? "clay" : "stone";
-    const cost = {
-      [mainResource]: uniquePositions.length * 5,
-      reed: uniquePositions.length * 2,
+    const baseRoomCost = {
+      [mainResource]: 5,
+      reed: 2,
     } as Partial<Record<ResourceKey, number>>;
+    let roomCost = baseRoomCost;
+    const fixedRoomCost = getPlayerCardEffects(player).find((effect) => effect.type === "costModifier" && effect.scope === "buildRoom" && effect.fixedRoomCost);
+    if (fixedRoomCost?.type === "costModifier" && fixedRoomCost.fixedRoomCost) {
+      roomCost = {
+        [mainResource]: fixedRoomCost.fixedRoomCost[mainResource] ?? baseRoomCost[mainResource] ?? 0,
+        reed: fixedRoomCost.fixedRoomCost.reed ?? baseRoomCost.reed ?? 0,
+      } as Partial<Record<ResourceKey, number>>;
+    }
+    let cost = Object.fromEntries(
+      Object.entries(roomCost).map(([resource, amount]) => [resource, (amount ?? 0) * uniquePositions.length]),
+    ) as Partial<Record<ResourceKey, number>>;
+    cost = applyCardCostModifiers(player, "buildRoom", cost);
     let nextPlayer = this.pay(player, cost);
 
     uniquePositions.forEach((position) => {
@@ -204,7 +217,7 @@ export class FarmManager {
       throw new Error(`一次行动最多建${max}个畜棚。`);
     }
 
-    let nextPlayer = this.pay(player, { wood: uniquePositions.length * woodCost });
+    let nextPlayer = this.pay(player, applyCardCostModifiers(player, "buildStable", { wood: uniquePositions.length * woodCost }));
 
     uniquePositions.forEach((position) => {
       const cell = this.getCell(nextPlayer.farm, position);
@@ -235,7 +248,7 @@ export class FarmManager {
     };
   }
 
-  buildFences(player: PlayerState, positions: CellPosition[]): PlayerState {
+  buildFences(player: PlayerState, positions: CellPosition[], options: { free?: boolean } = {}): PlayerState {
     const uniquePositions = this.uniquePositions(positions);
     if (uniquePositions.length === 0) {
       return player;
@@ -258,7 +271,7 @@ export class FarmManager {
     }
 
     const pastureId = `pasture-${player.farm.pastures.length + 1}`;
-    let nextPlayer = this.pay(player, { wood: fenceCost });
+    let nextPlayer = options.free ? player : this.pay(player, applyCardCostModifiers(player, "buildFence", { wood: fenceCost }));
 
     uniquePositions.forEach((position) => {
       const cell = this.getCell(nextPlayer.farm, position);
@@ -280,11 +293,51 @@ export class FarmManager {
     };
   }
 
-  buildFencesByEdges(player: PlayerState, edges: FenceEdge[]): PlayerState {
-    return this.buildFencesBySegments(player, edges.map((edge) => this.edgeToSegment(edge)));
+  createFreePasture(player: PlayerState, cellCount: number): PlayerState {
+    const positions = this.findFreePastureCells(player, cellCount);
+    if (positions.length === 0) {
+      return player;
+    }
+
+    const pastureId = `pasture-${player.farm.pastures.length + 1}`;
+    let nextPlayer = player;
+
+    positions.forEach((position) => {
+      const cell = this.getCell(nextPlayer.farm, position);
+      nextPlayer = this.updateCell(nextPlayer, position, {
+        ...cell,
+        pastureId,
+      });
+    });
+
+    const boundaryEdges = this.createBoundaryEdges(positions);
+    return {
+      ...nextPlayer,
+      farm: this.migrateFarm({
+        ...nextPlayer.farm,
+        fencesUsed: Math.min(15, nextPlayer.farm.fencesUsed + boundaryEdges.length),
+        fences: this.uniqueEdges([...nextPlayer.farm.fences, ...boundaryEdges]),
+        fenceSegments: this.uniqueSegments([...nextPlayer.farm.fenceSegments, ...boundaryEdges.map((edge) => this.edgeToSegment(edge))]),
+        pastures: [
+          ...nextPlayer.farm.pastures,
+          {
+            id: pastureId,
+            cells: positions,
+            fenceEdges: boundaryEdges,
+            animalType: null,
+            animalCount: 0,
+            capacity: this.calculatePastureCapacity(nextPlayer.farm, positions),
+          },
+        ],
+      }),
+    };
   }
 
-  buildFencesBySegments(player: PlayerState, segments: FenceSegment[]): PlayerState {
+  buildFencesByEdges(player: PlayerState, edges: FenceEdge[], options: { free?: boolean } = {}): PlayerState {
+    return this.buildFencesBySegments(player, edges.map((edge) => this.edgeToSegment(edge)), options);
+  }
+
+  buildFencesBySegments(player: PlayerState, segments: FenceSegment[], options: { free?: boolean } = {}): PlayerState {
     const farm = this.migrateFarm(player.farm);
     const newSegments = this.uniqueSegments(segments).filter((segment) => !this.hasFenceSegment(farm, segment));
     if (newSegments.length === 0) {
@@ -295,7 +348,7 @@ export class FarmManager {
       throw new Error("每个玩家最多15个栅栏。");
     }
 
-    const paid = this.pay({ ...player, farm }, { wood: newSegments.length });
+    const paid = options.free ? { ...player, farm } : this.pay({ ...player, farm }, applyCardCostModifiers(player, "buildFence", { wood: newSegments.length }));
     const nextFarm = this.recalculatePastures({
       ...paid.farm,
       fenceSegments: this.uniqueSegments([...paid.farm.fenceSegments, ...newSegments]),
@@ -420,9 +473,10 @@ export class FarmManager {
         if (!pasture.cells.some((cell) => cell.row === placement.row && cell.col === placement.col)) {
           throw new Error("该牧场格不能安置动物。");
         }
-        const updated = this.addToGroup({ animal: pasture.animalType, count: pasture.animalCount }, animal, placement.count, pasture.capacity);
+        const pastureBonus = cardCapacityBonus(player, "pasture");
+        const updated = this.addToGroup({ animal: pasture.animalType, count: pasture.animalCount }, animal, placement.count, pasture.capacity + pastureBonus);
         const existingCell = farm.animalHousing.cells.find((candidate) => candidate.row === placement.row && candidate.col === placement.col);
-        const updatedCell = this.addToGroup(existingCell ?? { row: placement.row, col: placement.col, animal: null, count: 0 }, animal, placement.count, this.cellPastureCapacity(farm, placement.row, placement.col));
+        const updatedCell = this.addToGroup(existingCell ?? { row: placement.row, col: placement.col, animal: null, count: 0 }, animal, placement.count, this.cellPastureCapacity(farm, placement.row, placement.col) + pastureBonus);
         farm = {
           ...farm,
           animalHousing: {
@@ -513,17 +567,23 @@ export class FarmManager {
   }
 
   renovate(player: PlayerState): PlayerState {
-    const nextMaterial = this.nextRoomMaterial(player.farm.roomMaterial);
+    if (hasCardActionRestriction(player, "renovation")) {
+      throw new Error("卡牌效果禁止继续翻修房屋。");
+    }
+    const nextMaterial = this.renovationTarget(player) ?? this.nextRoomMaterial(player.farm.roomMaterial);
     if (!nextMaterial) {
       throw new Error("石屋不能继续翻修。");
+    }
+    if (nextMaterial === player.farm.roomMaterial) {
+      throw new Error("房屋已经是目标材质。");
     }
 
     const roomCount = player.farm.cells.filter((cell) => cell.room).length;
     const resource: ResourceKey = nextMaterial === "clay" ? "clay" : "stone";
-    const paid = this.pay(player, {
+    const paid = this.pay(player, applyCardCostModifiers(player, "renovation", {
       [resource]: roomCount,
       reed: 1,
-    } as Partial<Record<ResourceKey, number>>);
+    } as Partial<Record<ResourceKey, number>>));
 
     return {
       ...paid,
@@ -542,12 +602,22 @@ export class FarmManager {
     };
   }
 
+  private renovationTarget(player: PlayerState): Exclude<RoomMaterial, "wood"> | null {
+    const target = getPlayerCardEffects(player)
+      .filter((effect) => effect.type === "costModifier" && effect.scope === "renovation" && effect.renovationTarget)
+      .map((effect) => (effect.type === "costModifier" ? effect.renovationTarget : null))
+      .find((material): material is Exclude<RoomMaterial, "wood"> => material === "clay" || material === "stone");
+    if (!target) return null;
+    const order: RoomMaterial[] = ["wood", "clay", "stone"];
+    return order.indexOf(target) > order.indexOf(player.farm.roomMaterial) ? target : null;
+  }
+
   countRooms(player: PlayerState): number {
     return player.farm.cells.filter((cell) => cell.room).length;
   }
 
   countEmptyRooms(player: PlayerState): number {
-    return this.countRooms(player) - player.workers.length;
+    return this.countRooms(player) + cardCapacityBonus(player, "housing") - player.workers.length;
   }
 
   pay(player: PlayerState, cost: Partial<Record<ResourceKey, number>>): PlayerState {
@@ -611,6 +681,16 @@ export class FarmManager {
         throw new Error("新房间必须与现有房间正交相邻。");
       }
     });
+  }
+
+  private findFreePastureCells(player: PlayerState, cellCount: number): CellPosition[] {
+    const count = Math.max(1, Math.floor(cellCount));
+    if (count !== 1) {
+      return [];
+    }
+    const farm = this.migrateFarm(player.farm);
+    const cell = farm.cells.find((candidate) => !candidate.room && !candidate.field && !candidate.pastureId);
+    return cell ? [{ row: cell.row, col: cell.col }] : [];
   }
 
   private isConnected(positions: CellPosition[]): boolean {

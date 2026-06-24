@@ -12,7 +12,7 @@ export function FinalScoreReveal({ game }: FinalScoreRevealProps) {
   const [visibleRows, setVisibleRows] = useState(1);
   const [dismissedGameId, setDismissedGameId] = useState<string | null>(null);
   const open = game.phase === "GAME_END" && dismissedGameId !== `${game.gameId}:${game.round}`;
-  const rows = scoreRows.filter((row) => row.key !== "minorImprovements" && row.key !== "occupations");
+  const rows = scoreRows;
   const completed = visibleRows >= rows.length;
 
   useEffect(() => {

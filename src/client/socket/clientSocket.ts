@@ -3,7 +3,9 @@ import { SocketEvents } from "../../shared/socketEvents";
 import type {
   ActionInput,
   ActionNotice,
+  AdminAddCardToHandPayload,
   AdminAdjustResourcePayload,
+  AdminToggleActionSpaceOccupiedPayload,
   AnimalCookInput,
   AnimalOverflowResolution,
   AuthSuccessPayload,
@@ -12,6 +14,8 @@ import type {
   RoomLeftPayload,
   RoomListItem,
   RoomSnapshot,
+  SubmitCardChoicePayload,
+  SubmitCardDraftPickPayload,
 } from "../../shared/types";
 import { useGameStore } from "../store/gameStore";
 
@@ -89,12 +93,17 @@ export function restoreSession(token: string): void {
   socket.emit(SocketEvents.RESTORE_SESSION, { token });
 }
 
-export function createRoom(playerName: string): void {
-  socket.emit(SocketEvents.CREATE_ROOM, { playerName });
+export function createRoom(playerName: string, options: { enableCardDraft: boolean; roomPassword: string; draftTimeLimitMinutes: number | null }): void {
+  socket.emit(SocketEvents.CREATE_ROOM, {
+    playerName,
+    enableCardDraft: options.enableCardDraft,
+    roomPassword: options.roomPassword,
+    draftTimeLimitMinutes: options.draftTimeLimitMinutes,
+  });
 }
 
-export function joinRoom(roomId: string, playerName: string): void {
-  socket.emit(SocketEvents.JOIN_ROOM, { roomId, playerName });
+export function joinRoom(roomId: string, playerName: string, roomPassword = ""): void {
+  socket.emit(SocketEvents.JOIN_ROOM, { roomId, playerName, roomPassword });
 }
 
 export function leaveRoom(roomId: string): void {
@@ -110,6 +119,37 @@ export function logout(): void {
 
 export function startGame(roomId: string): void {
   socket.emit(SocketEvents.START_GAME, { roomId });
+}
+
+export function addComputerPlayer(roomId: string): void {
+  socket.emit(SocketEvents.ADD_COMPUTER_PLAYER, { roomId });
+}
+
+export function setPlayerReady(roomId: string, playerId: string, ready: boolean): void {
+  socket.emit(SocketEvents.SET_PLAYER_READY, { roomId, playerId, ready });
+}
+
+export function confirmGameEnd(roomId: string, playerId: string): void {
+  socket.emit(SocketEvents.CONFIRM_GAME_END, { roomId, playerId });
+}
+
+export function submitCardDraftPick(roomId: string, playerId: string, minorImprovementId: string, occupationId: string): void {
+  const payload: SubmitCardDraftPickPayload = {
+    roomId,
+    playerId,
+    minorImprovementId,
+    occupationId,
+  };
+  socket.emit(SocketEvents.SUBMIT_CARD_DRAFT_PICK, payload);
+}
+
+export function submitCardChoice(roomId: string, playerId: string, input: ActionInput): void {
+  const payload: SubmitCardChoicePayload = {
+    roomId,
+    playerId,
+    input,
+  };
+  socket.emit(SocketEvents.SUBMIT_CARD_CHOICE, payload);
 }
 
 export function playOccupation(roomId: string, playerId: string): void {
@@ -187,8 +227,20 @@ export function advanceAdminRound(roomId: string): void {
   socket.emit(SocketEvents.ADMIN_ADVANCE_ROUND, { roomId });
 }
 
+export function startAdminHarvest(roomId: string): void {
+  socket.emit(SocketEvents.ADMIN_START_HARVEST, { roomId });
+}
+
 export function adjustAdminResource(roomId: string, playerId: string, key: AdminAdjustResourcePayload["key"], delta: number): void {
   socket.emit(SocketEvents.ADMIN_ADJUST_RESOURCE, { roomId, playerId, key, delta });
+}
+
+export function addAdminCardToHand(roomId: string, playerId: string, kind: AdminAddCardToHandPayload["kind"], cardId: string): void {
+  socket.emit(SocketEvents.ADMIN_ADD_CARD_TO_HAND, { roomId, playerId, kind, cardId });
+}
+
+export function toggleAdminActionSpaceOccupied(roomId: string, actionSpaceId: AdminToggleActionSpaceOccupiedPayload["actionSpaceId"]): void {
+  socket.emit(SocketEvents.ADMIN_TOGGLE_ACTION_SPACE_OCCUPIED, { roomId, actionSpaceId });
 }
 
 function getStoredToken(): string | null {
