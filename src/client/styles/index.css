@@ -1620,7 +1620,7 @@ button:hover {
 
 .game-modal .playable-card__line-label {
   color: var(--farm-muted);
-  font-size: 6px;
+  font-size: 12px;
   font-weight: 900;
   line-height: 1;
 }
